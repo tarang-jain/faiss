@@ -16,7 +16,9 @@
 #include <faiss/gpu/utils/Float16.cuh>
 
 #if defined USE_NVIDIA_RAFT
+#include <faiss/gpu/utils/RaftUtils.h>
 #include <faiss/gpu/impl/RaftIVFFlat.cuh>
+#include <raft/neighbors/ivf_flat.cuh>
 #endif
 
 #include <limits>
@@ -74,7 +76,7 @@ GpuIndexIVFFlat::GpuIndexIVFFlat(
     // no other quantizer that we need to train, so this is sufficient
     if (this->is_trained) {
         FAISS_ASSERT(this->quantizer);
-        set_index_(
+        setIndex_(
                 resources_.get(),
                 this->d,
                 this->nlist,
@@ -92,56 +94,13 @@ GpuIndexIVFFlat::GpuIndexIVFFlat(
 
 GpuIndexIVFFlat::~GpuIndexIVFFlat() {}
 
-void GpuIndexIVFFlat::set_index_(
-        GpuResources* resources,
-        int dim,
-        int nlist,
-        faiss::MetricType metric,
-        float metricArg,
-        bool useResidual,
-        /// Optional ScalarQuantizer
-        faiss::ScalarQuantizer* scalarQ,
-        bool interleavedLayout,
-        IndicesOptions indicesOptions,
-        MemorySpace space) {
-#if defined USE_NVIDIA_RAFT
-
-    if (config_.use_raft) {
-        index_.reset(new RaftIVFFlat(
-                resources,
-                dim,
-                nlist,
-                metric,
-                metricArg,
-                useResidual,
-                scalarQ,
-                interleavedLayout,
-                indicesOptions,
-                space));
-    } else
-#else
-    if (config_.use_raft) {
-        FAISS_THROW_MSG(
-                "RAFT has not been compiled into the current version so it cannot be used.");
-    } else
-#endif
-    {
-        index_.reset(new IVFFlat(
-                resources,
-                dim,
-                nlist,
-                metric,
-                metricArg,
-                useResidual,
-                scalarQ,
-                interleavedLayout,
-                indicesOptions,
-                space));
-    }
-}
-
 void GpuIndexIVFFlat::reserveMemory(size_t numVecs) {
     DeviceScope scope(config_.device);
+
+    if (config_.use_raft) {
+        FAISS_THROW_MSG(
+                "Pre-allocation of IVF lists is not supported with RAFT enabled.");
+    }
 
     reserveMemoryVecs_ = numVecs;
     if (index_) {
@@ -157,7 +116,11 @@ void GpuIndexIVFFlat::copyFrom(const faiss::IndexIVFFlat* index) {
 
     // Clear out our old data
     index_.reset();
-    baseIndex_.reset();
+
+    // skip base class allocations if RAFT is not enabled
+    if (!config_.use_raft) {
+        baseIndex_.reset();
+    }
 
     // The other index might not be trained
     if (!index->is_trained) {
@@ -169,7 +132,7 @@ void GpuIndexIVFFlat::copyFrom(const faiss::IndexIVFFlat* index) {
     FAISS_ASSERT(is_trained);
 
     // Copy our lists as well
-    set_index_(
+    setIndex_(
             resources_.get(),
             d,
             nlist,
@@ -254,8 +217,41 @@ void GpuIndexIVFFlat::train(idx_t n, const float* x) {
 
 #if defined USE_NVIDIA_RAFT
     if (config_.use_raft) {
-        // No need to copy the data to host
-        trainQuantizer_(n, x);
+        setIndex_(
+                resources_.get(),
+                this->d,
+                this->nlist,
+                this->metric_type,
+                this->metric_arg,
+                false,   // no residual
+                nullptr, // no scalar quantizer
+                ivfFlatConfig_.interleavedLayout,
+                ivfFlatConfig_.indicesOptions,
+                config_.memorySpace);
+        const raft::device_resources& raft_handle =
+                resources_->getRaftHandleCurrentDevice();
+
+        raft::neighbors::ivf_flat::index_params raft_idx_params;
+        raft_idx_params.n_lists = nlist;
+        raft_idx_params.metric = metricFaissToRaft(metric_type, false);
+        raft_idx_params.add_data_on_build = false;
+        raft_idx_params.kmeans_trainset_fraction =
+                static_cast<double>(cp.max_points_per_centroid * nlist) /
+                static_cast<double>(n);
+        raft_idx_params.kmeans_n_iters = cp.niter;
+
+        auto raftIndex_ =
+                std::static_pointer_cast<RaftIVFFlat, IVFFlat>(index_);
+
+        raft::neighbors::ivf_flat::index<float, idx_t> raft_ivfflat_index =
+                raft::neighbors::ivf_flat::build<float, idx_t>(
+                        raft_handle, raft_idx_params, x, n, (idx_t)d);
+
+        quantizer->train(nlist, raft_ivfflat_index.centers().data_handle());
+        quantizer->add(nlist, raft_ivfflat_index.centers().data_handle());
+        raft_handle.sync_stream();
+
+        raftIndex_->setRaftIndex(std::move(raft_ivfflat_index));
     } else
 #else
     if (config_.use_raft) {
@@ -272,28 +268,87 @@ void GpuIndexIVFFlat::train(idx_t n, const float* x) {
                 resources_->getDefaultStream(config_.device),
                 {n, this->d});
         trainQuantizer_(n, hostData.data());
+
+        setIndex_(
+                resources_.get(),
+                this->d,
+                this->nlist,
+                this->metric_type,
+                this->metric_arg,
+                false,   // no residual
+                nullptr, // no scalar quantizer
+                ivfFlatConfig_.interleavedLayout,
+                ivfFlatConfig_.indicesOptions,
+                config_.memorySpace);
+        updateQuantizer();
     }
 
     // The quantizer is now trained; construct the IVF index
-    set_index_(
-            resources_.get(),
-            this->d,
-            this->nlist,
-            this->metric_type,
-            this->metric_arg,
-            false,   // no residual
-            nullptr, // no scalar quantizer
-            ivfFlatConfig_.interleavedLayout,
-            ivfFlatConfig_.indicesOptions,
-            config_.memorySpace);
     baseIndex_ = std::static_pointer_cast<IVFBase, IVFFlat>(index_);
-    updateQuantizer();
 
     if (reserveMemoryVecs_) {
-        index_->reserveMemory(reserveMemoryVecs_);
+        if (config_.use_raft) {
+            FAISS_THROW_MSG(
+                    "Pre-allocation of IVF lists is not supported with RAFT enabled.");
+        } else
+            index_->reserveMemory(reserveMemoryVecs_);
     }
 
     this->is_trained = true;
+}
+
+void GpuIndexIVFFlat::setIndex_(
+        GpuResources* resources,
+        int dim,
+        int nlist,
+        faiss::MetricType metric,
+        float metricArg,
+        bool useResidual,
+        /// Optional ScalarQuantizer
+        faiss::ScalarQuantizer* scalarQ,
+        bool interleavedLayout,
+        IndicesOptions indicesOptions,
+        MemorySpace space) {
+#if defined USE_NVIDIA_RAFT
+
+    if (config_.use_raft) {
+        FAISS_THROW_IF_NOT_MSG(
+                ivfFlatConfig_.indicesOptions == INDICES_64_BIT,
+                "RAFT only supports INDICES_64_BIT");
+        FAISS_THROW_IF_NOT_MSG(
+                ivfFlatConfig_.interleavedLayout,
+                "RAFT requires interleavedLayout to be true");
+        index_.reset(new RaftIVFFlat(
+                resources,
+                dim,
+                nlist,
+                metric,
+                metricArg,
+                useResidual,
+                scalarQ,
+                interleavedLayout,
+                indicesOptions,
+                space));
+    } else
+#else
+    if (config_.use_raft) {
+        FAISS_THROW_MSG(
+                "RAFT has not been compiled into the current version so it cannot be used.");
+    } else
+#endif
+    {
+        index_.reset(new IVFFlat(
+                resources,
+                dim,
+                nlist,
+                metric,
+                metricArg,
+                useResidual,
+                scalarQ,
+                interleavedLayout,
+                indicesOptions,
+                space));
+    }
 }
 
 } // namespace gpu

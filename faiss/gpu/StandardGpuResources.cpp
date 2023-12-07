@@ -478,29 +478,42 @@ void* StandardGpuResourcesImpl::allocMemory(const AllocRequest& req) {
     void* p = nullptr;
 
     if (adjReq.space == MemorySpace::Temporary) {
-        // If we don't have enough space in our temporary memory manager, we
-        // need to allocate this request separately
-        auto& tempMem = tempMemory_[adjReq.device];
+        rmm::mr::device_memory_resource mr =
+                rmm::mr::get_per_device_resource(cuda_device_id{req.device});
+        // check if an RMM pool memory resource has been set on the requested device
+        if (dynamic_cast<rmm::mr::pool_memory_resource<
+                    rmm::mr::cuda_memory_resource>*>(mr)) {
+            try {
+                p = mr->allocate(adjReq.size, adjReq.stream);
+            } catch (const std::bad_alloc& rmm_ex) {
+                FAISS_THROW_MSG("CUDA memory allocation error");
+            }
+        } else {
+            // An RMM pool has not been set. Fall back to FAISS' temporary allocator
+            // If we don't have enough space in our temporary memory manager, we
+            // need to allocate this request separately
+            auto& tempMem = tempMemory_[adjReq.device];
 
-        if (adjReq.size > tempMem->getSizeAvailable()) {
-            // We need to allocate this ourselves
-            AllocRequest newReq = adjReq;
-            newReq.space = MemorySpace::Device;
-            newReq.type = AllocType::TemporaryMemoryOverflow;
+            if (adjReq.size > tempMem->getSizeAvailable()) {
+                // We need to allocate this ourselves
+                AllocRequest newReq = adjReq;
+                newReq.space = MemorySpace::Device;
+                newReq.type = AllocType::TemporaryMemoryOverflow;
 
-            if (allocLogging_) {
-                std::cout
-                        << "StandardGpuResources: alloc fail "
-                        << adjReq.toString()
-                        << " (no temp space); retrying as MemorySpace::Device\n";
+                if (allocLogging_) {
+                    std::cout
+                            << "StandardGpuResources: alloc fail "
+                            << adjReq.toString()
+                            << " (no temp space); retrying as MemorySpace::Device\n";
+                }
+
+                return allocMemory(newReq);
             }
 
-            return allocMemory(newReq);
+            // Otherwise, we can handle this locally
+            p = tempMemory_[adjReq.device]->allocMemory(
+                    adjReq.stream, adjReq.size);
         }
-
-        // Otherwise, we can handle this locally
-        p = tempMemory_[adjReq.device]->allocMemory(adjReq.stream, adjReq.size);
-
     } else if (adjReq.space == MemorySpace::Device) {
 #if defined USE_NVIDIA_RAFT
         try {
@@ -592,6 +605,7 @@ void StandardGpuResourcesImpl::deallocMemory(int device, void* p) {
     }
 
     if (req.space == MemorySpace::Temporary) {
+        mr->deallocate(p, req.size, req.stream);
         tempMemory_[device]->deallocMemory(device, req.stream, req.size, p);
 
     } else if (

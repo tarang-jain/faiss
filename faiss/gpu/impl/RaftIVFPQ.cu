@@ -327,7 +327,7 @@ void RaftIVFPQ::search(
             out_inds_view,
             out_dists_view);
     
-    raft_handles.sync_stream();
+    raft_handle.sync_stream();
     printf("raft index search completed\n");
 
     /// Identify NaN rows and mask their nearest neighbors

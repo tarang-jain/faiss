@@ -13,7 +13,7 @@
 #include <faiss/utils/Heap.h>
 #include <faiss/utils/distances.h>
 #include <faiss/utils/utils.h>
-
+#include <raft/util/cudart_utils.hpp>
 namespace faiss {
 
 /***************************************************
@@ -274,7 +274,7 @@ void IndexRefineFlat::search(
 
     base_index->search(
             n, x, k_base, base_distances, base_labels, base_index_params);
-
+    
     for (int i = 0; i < n * k_base; i++)
         assert(base_labels[i] >= -1 && base_labels[i] < ntotal);
 
@@ -284,7 +284,7 @@ void IndexRefineFlat::search(
 
     rf->compute_distance_subset(n, x, k_base, base_distances, base_labels);
 
-    // sort and store result
+    // // sort and store result
     if (metric_type == METRIC_L2) {
         typedef CMax<float, idx_t> C;
         reorder_2_heaps<C>(

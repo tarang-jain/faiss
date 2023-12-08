@@ -323,7 +323,7 @@ void RaftIVFPQ::search(
             queries_view,
             out_inds_view,
             out_dists_view);
-
+    
     /// Identify NaN rows and mask their nearest neighbors
     auto nan_flag = raft::make_device_vector<bool>(raft_handle, numQueries);
 

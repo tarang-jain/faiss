@@ -489,8 +489,8 @@ void* StandardGpuResourcesImpl::allocMemory(const AllocRequest& req) {
                 auto const [free, total] = pool_mr->get_mem_info(adjReq.stream);
                 std::cout << "pre-allocation GPU free memory: " << free << " total: " << total << "\n";
                 p = pool_mr->allocate(adjReq.size, adjReq.stream);
-                auto const [free_post_allc, total_post_alloc] = pool_mr->get_mem_info(adjReq.stream);
-                std::cout << "Post-allocation GPU free memry: " << free_post_allc << " total: " << total_post_alloc << "\n";
+                auto const [free_post_alloc, total_post_alloc] = pool_mr->get_mem_info(adjReq.stream);
+                std::cout << "Post-allocation GPU free memry: " << free_post_alloc << " total: " << total_post_alloc << "\n";
             } catch (const std::bad_alloc& rmm_ex) {
                 FAISS_THROW_MSG("CUDA memory allocation error");
             }

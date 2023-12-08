@@ -478,9 +478,10 @@ void* StandardGpuResourcesImpl::allocMemory(const AllocRequest& req) {
     void* p = nullptr;
 
     if (adjReq.space == MemorySpace::Temporary) {
-        rmm::mr::device_memory_resource mr =
-                rmm::mr::get_per_device_resource(cuda_device_id{req.device});
-        // check if an RMM pool memory resource has been set on the requested device
+        rmm::mr::device_memory_resource* mr = rmm::mr::get_per_device_resource(
+                rmm::cuda_device_id{req.device});
+        // check if an RMM pool memory resource has been set on the requested
+        // device
         if (dynamic_cast<rmm::mr::pool_memory_resource<
                     rmm::mr::cuda_memory_resource>*>(mr)) {
             try {
@@ -489,9 +490,9 @@ void* StandardGpuResourcesImpl::allocMemory(const AllocRequest& req) {
                 FAISS_THROW_MSG("CUDA memory allocation error");
             }
         } else {
-            // An RMM pool has not been set. Fall back to FAISS' temporary allocator
-            // If we don't have enough space in our temporary memory manager, we
-            // need to allocate this request separately
+            // An RMM pool has not been set. Fall back to FAISS' temporary
+            // allocator If we don't have enough space in our temporary memory
+            // manager, we need to allocate this request separately
             auto& tempMem = tempMemory_[adjReq.device];
 
             if (adjReq.size > tempMem->getSizeAvailable()) {
@@ -605,8 +606,15 @@ void StandardGpuResourcesImpl::deallocMemory(int device, void* p) {
     }
 
     if (req.space == MemorySpace::Temporary) {
-        mr->deallocate(p, req.size, req.stream);
-        tempMemory_[device]->deallocMemory(device, req.stream, req.size, p);
+        rmm::mr::device_memory_resource* mr = rmm::mr::get_per_device_resource(
+                rmm::cuda_device_id{req.device});
+        if (dynamic_cast<rmm::mr::pool_memory_resource<
+                    rmm::mr::cuda_memory_resource>*>(mr)) {
+            mr->deallocate(p, req.size, req.stream);
+        }
+        else {
+            tempMemory_[device]->deallocMemory(device, req.stream, req.size, p);
+        }
 
     } else if (
             req.space == MemorySpace::Device ||

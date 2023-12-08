@@ -482,10 +482,15 @@ void* StandardGpuResourcesImpl::allocMemory(const AllocRequest& req) {
                 rmm::cuda_device_id{req.device});
         // check if an RMM pool memory resource has been set on the requested
         // device
-        if (dynamic_cast<rmm::mr::pool_memory_resource<
-                    rmm::mr::cuda_memory_resource>*>(mr)) {
+        auto pool_mr = dynamic_cast<rmm::mr::pool_memory_resource<
+                    rmm::mr::cuda_memory_resource>*>(mr);
+        if (pool_mr) {
             try {
-                p = mr->allocate(adjReq.size, adjReq.stream);
+                auto const [free, total] = pool_mr->get_mem_info(adjReq.stream);
+                std::cout << "pre-allocation GPU free memory: " << free << " total: " << total << "\n";
+                p = pool_mr->allocate(adjReq.size, adjReq.stream);
+                auto const [free_post_allc, total_post_alloc] = pool_mr->get_mem_info(adjReq.stream);
+                std::cout << "Post-allocation GPU free memry: " << free << " total: " << total << "\n";
             } catch (const std::bad_alloc& rmm_ex) {
                 FAISS_THROW_MSG("CUDA memory allocation error");
             }

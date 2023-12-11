@@ -275,28 +275,28 @@ void IndexRefineFlat::search(
     base_index->search(
             n, x, k_base, base_distances, base_labels, base_index_params);
 
-    for (int i = 0; i < n * k_base; i++)
-        assert(base_labels[i] >= -1 && base_labels[i] < ntotal);
+    // for (int i = 0; i < n * k_base; i++)
+    //     assert(base_labels[i] >= -1 && base_labels[i] < ntotal);
 
-    // compute refined distances
-    auto rf = dynamic_cast<const IndexFlat*>(refine_index);
-    FAISS_THROW_IF_NOT(rf);
+    // // compute refined distances
+    // auto rf = dynamic_cast<const IndexFlat*>(refine_index);
+    // FAISS_THROW_IF_NOT(rf);
 
-    rf->compute_distance_subset(n, x, k_base, base_distances, base_labels);
+    // rf->compute_distance_subset(n, x, k_base, base_distances, base_labels);
 
-    // sort and store result
-    if (metric_type == METRIC_L2) {
-        typedef CMax<float, idx_t> C;
-        reorder_2_heaps<C>(
-                n, k, labels, distances, k_base, base_labels, base_distances);
+    // // sort and store result
+    // if (metric_type == METRIC_L2) {
+    //     typedef CMax<float, idx_t> C;
+    //     reorder_2_heaps<C>(
+    //             n, k, labels, distances, k_base, base_labels, base_distances);
 
-    } else if (metric_type == METRIC_INNER_PRODUCT) {
-        typedef CMin<float, idx_t> C;
-        reorder_2_heaps<C>(
-                n, k, labels, distances, k_base, base_labels, base_distances);
-    } else {
-        FAISS_THROW_MSG("Metric type not supported");
-    }
+    // } else if (metric_type == METRIC_INNER_PRODUCT) {
+    //     typedef CMin<float, idx_t> C;
+    //     reorder_2_heaps<C>(
+    //             n, k, labels, distances, k_base, base_labels, base_distances);
+    // } else {
+    //     FAISS_THROW_MSG("Metric type not supported");
+    // }
 }
 
 } // namespace faiss

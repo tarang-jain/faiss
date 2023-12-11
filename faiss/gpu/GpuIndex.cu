@@ -257,8 +257,8 @@ void GpuIndex::search(
     }
 
     // Copy back if necessary
-    fromDevice<float, 2>(outDistances, distances, stream);
-    fromDevice<idx_t, 2>(outLabels, labels, stream);
+    // fromDevice<float, 2>(outDistances, distances, stream);
+    // fromDevice<idx_t, 2>(outLabels, labels, stream);
 }
 
 void GpuIndex::search_and_reconstruct(

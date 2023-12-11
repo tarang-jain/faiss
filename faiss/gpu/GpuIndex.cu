@@ -282,6 +282,8 @@ void GpuIndex::searchNonPaged_(
         const SearchParameters* params) const {
     auto stream = resources_->getDefaultStream(config_.device);
 
+    printf("inside searchNonPaged_ %zu, %d\n", n, k);
+
     // Make sure arguments are on the device we desire; use temporary
     // memory allocations to move it if necessary
     auto vecs = toDeviceTemporary<float, 2>(

@@ -293,7 +293,7 @@ void RaftIVFPQ::search(
         int k,
         Tensor<float, 2, true>& outDistances,
         Tensor<idx_t, 2, true>& outIndices) {
-    printf("inside raft index search\n");
+//     printf("inside raft index search\n");
     uint32_t numQueries = queries.getSize(0);
     uint32_t cols = queries.getSize(1);
     idx_t k_ = std::min(static_cast<idx_t>(k), raft_knn_index.value().size());
@@ -304,7 +304,7 @@ void RaftIVFPQ::search(
     FAISS_ASSERT(cols == dim_);
     FAISS_THROW_IF_NOT(nprobe > 0 && nprobe <= numLists_);
 
-    printf("all assertions completed\n");
+//     printf("all assertions completed\n");
 
     const raft::device_resources& raft_handle =
             resources_->getRaftHandleCurrentDevice();
@@ -328,14 +328,14 @@ void RaftIVFPQ::search(
             out_dists_view);
     
     raft_handle.sync_stream();
-    printf("raft index search completed\n");
+//     printf("raft index search completed\n");
 
     /// Identify NaN rows and mask their nearest neighbors
     auto nan_flag = raft::make_device_vector<bool>(raft_handle, numQueries);
 
     validRowIndices(resources_, queries, nan_flag.data_handle());
 
-    printf("validRowIndices run completed\n");
+//     printf("validRowIndices run completed\n");
 
     raft::linalg::map_offset(
             raft_handle,

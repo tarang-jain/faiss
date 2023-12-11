@@ -525,7 +525,7 @@ void* StandardGpuResourcesImpl::allocMemory(const AllocRequest& req) {
     } else if (adjReq.space == MemorySpace::Device) {
 #if defined USE_NVIDIA_RAFT
         try {
-            printf("inside device allocator; requested size %zu\n", adjReq.size);
+            // printf("inside device allocator; requested size %zu\n", adjReq.size);
             rmm::mr::device_memory_resource* cmr = rmm::mr::get_per_device_resource(rmm::cuda_device_id{adjReq.device});
             p = cmr->allocate(adjReq.size, adjReq.stream);
         } catch (const std::bad_alloc& rmm_ex) {

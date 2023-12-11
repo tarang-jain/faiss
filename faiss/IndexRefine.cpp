@@ -281,9 +281,9 @@ void IndexRefineFlat::search(
     // compute refined distances
     auto rf = dynamic_cast<const IndexFlat*>(refine_index);
     FAISS_THROW_IF_NOT(rf);
-
-    raft::print_host_vector("base_distances", base_distances, n*k_base, std::cout);
-    raft::print_host_vector("base_labels", base_labels, n*k_base, std::cout);
+    
+    // raft::print_host_vector("base_distances", base_distances, n*k_base, std::cout);
+    // raft::print_host_vector("base_labels", base_labels, n*k_base, std::cout);
 
     rf->compute_distance_subset(n, x, k_base, base_distances, base_labels);
 

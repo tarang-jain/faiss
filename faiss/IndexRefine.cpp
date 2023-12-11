@@ -282,7 +282,7 @@ void IndexRefineFlat::search(
     auto rf = dynamic_cast<const IndexFlat*>(refine_index);
     FAISS_THROW_IF_NOT(rf);
 
-    // rf->compute_distance_subset(n, x, k_base, base_distances, base_labels);
+    rf->compute_distance_subset(n, x, k_base, base_distances, base_labels);
 
     // // sort and store result
     // if (metric_type == METRIC_L2) {

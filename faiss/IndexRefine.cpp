@@ -13,7 +13,7 @@
 #include <faiss/utils/Heap.h>
 #include <faiss/utils/distances.h>
 #include <faiss/utils/utils.h>
-
+#include <raft/util/cudart_utils.hpp>
 namespace faiss {
 
 /***************************************************

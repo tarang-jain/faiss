@@ -274,7 +274,8 @@ void IndexRefineFlat::search(
 
     base_index->search(
             n, x, k_base, base_distances, base_labels, base_index_params);
-
+    
+    printf("n %d, k_base %d\n", n, k_base);
     for (int i = 0; i < n * k_base; i++)
         assert(base_labels[i] >= -1 && base_labels[i] < ntotal);
 
@@ -285,21 +286,21 @@ void IndexRefineFlat::search(
     // raft::print_host_vector("base_distances", base_distances, n*k_base, std::cout);
     // raft::print_host_vector("base_labels", base_labels, n*k_base, std::cout);
 
-    rf->compute_distance_subset(n, x, k_base, base_distances, base_labels);
+    // rf->compute_distance_subset(n, x, k_base, base_distances, base_labels);
 
     // // sort and store result
-    // if (metric_type == METRIC_L2) {
-    //     typedef CMax<float, idx_t> C;
-    //     reorder_2_heaps<C>(
-    //             n, k, labels, distances, k_base, base_labels, base_distances);
+    if (metric_type == METRIC_L2) {
+        typedef CMax<float, idx_t> C;
+        reorder_2_heaps<C>(
+                n, k, labels, distances, k_base, base_labels, base_distances);
 
-    // } else if (metric_type == METRIC_INNER_PRODUCT) {
-    //     typedef CMin<float, idx_t> C;
-    //     reorder_2_heaps<C>(
-    //             n, k, labels, distances, k_base, base_labels, base_distances);
-    // } else {
-    //     FAISS_THROW_MSG("Metric type not supported");
-    // }
+    } else if (metric_type == METRIC_INNER_PRODUCT) {
+        typedef CMin<float, idx_t> C;
+        reorder_2_heaps<C>(
+                n, k, labels, distances, k_base, base_labels, base_distances);
+    } else {
+        FAISS_THROW_MSG("Metric type not supported");
+    }
 }
 
 } // namespace faiss

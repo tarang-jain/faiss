@@ -480,30 +480,6 @@ void* StandardGpuResourcesImpl::allocMemory(const AllocRequest& req) {
     void* p = nullptr;
 
     if (adjReq.space == MemorySpace::Temporary) {
-        // rmm::mr::device_memory_resource* mr =
-        // rmm::mr::get_per_device_resource(
-        //         rmm::cuda_device_id{req.device});
-        // // check if an RMM pool memory resource has been set on the requested
-        // // device
-        // auto pool_mr = dynamic_cast<rmm::mr::pool_memory_resource<
-        //             rmm::mr::cuda_memory_resource>*>(mr);
-        // if (pool_mr) {
-        //     try {
-        //         auto const [free, total] =
-        //         pool_mr->get_mem_info(adjReq.stream); std::cout <<
-        //         "pre-allocation GPU free memory: " << free << " total: " <<
-        //         total << "\n"; p = pool_mr->allocate(adjReq.size,
-        //         adjReq.stream); auto const [free_post_alloc,
-        //         total_post_alloc] = pool_mr->get_mem_info(adjReq.stream);
-        //         std::cout << "Post-allocation GPU free memry: " <<
-        //         free_post_alloc << " total: " << total_post_alloc << "\n";
-        //     } catch (const std::bad_alloc& rmm_ex) {
-        //         FAISS_THROW_MSG("CUDA memory allocation error");
-        //     }
-        // } else {
-        // An RMM pool has not been set. Fall back to FAISS' temporary
-        // allocator If we don't have enough space in our temporary memory
-        // manager, we need to allocate this request separately
         auto& tempMem = tempMemory_[adjReq.device];
 
         if (adjReq.size > tempMem->getSizeAvailable()) {

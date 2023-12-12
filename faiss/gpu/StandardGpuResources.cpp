@@ -94,7 +94,7 @@ std::string allocsToString(const std::unordered_map<void*, AllocRequest>& map) {
 StandardGpuResourcesImpl::StandardGpuResourcesImpl()
         :
 #if defined USE_NVIDIA_RAFT
-        //   cmr(rmm::mr::get_current_device_resource()),
+          //   cmr(rmm::mr::get_current_device_resource()),
           mmr(new rmm::mr::managed_memory_resource),
           pmr(new rmm::mr::pinned_memory_resource),
 #endif
@@ -480,7 +480,8 @@ void* StandardGpuResourcesImpl::allocMemory(const AllocRequest& req) {
     void* p = nullptr;
 
     if (adjReq.space == MemorySpace::Temporary) {
-        // rmm::mr::device_memory_resource* mr = rmm::mr::get_per_device_resource(
+        // rmm::mr::device_memory_resource* mr =
+        // rmm::mr::get_per_device_resource(
         //         rmm::cuda_device_id{req.device});
         // // check if an RMM pool memory resource has been set on the requested
         // // device
@@ -488,70 +489,86 @@ void* StandardGpuResourcesImpl::allocMemory(const AllocRequest& req) {
         //             rmm::mr::cuda_memory_resource>*>(mr);
         // if (pool_mr) {
         //     try {
-        //         auto const [free, total] = pool_mr->get_mem_info(adjReq.stream);
-        //         std::cout << "pre-allocation GPU free memory: " << free << " total: " << total << "\n";
-        //         p = pool_mr->allocate(adjReq.size, adjReq.stream);
-        //         auto const [free_post_alloc, total_post_alloc] = pool_mr->get_mem_info(adjReq.stream);
-        //         std::cout << "Post-allocation GPU free memry: " << free_post_alloc << " total: " << total_post_alloc << "\n";
+        //         auto const [free, total] =
+        //         pool_mr->get_mem_info(adjReq.stream); std::cout <<
+        //         "pre-allocation GPU free memory: " << free << " total: " <<
+        //         total << "\n"; p = pool_mr->allocate(adjReq.size,
+        //         adjReq.stream); auto const [free_post_alloc,
+        //         total_post_alloc] = pool_mr->get_mem_info(adjReq.stream);
+        //         std::cout << "Post-allocation GPU free memry: " <<
+        //         free_post_alloc << " total: " << total_post_alloc << "\n";
         //     } catch (const std::bad_alloc& rmm_ex) {
         //         FAISS_THROW_MSG("CUDA memory allocation error");
         //     }
         // } else {
-            // An RMM pool has not been set. Fall back to FAISS' temporary
-            // allocator If we don't have enough space in our temporary memory
-            // manager, we need to allocate this request separately
-            auto& tempMem = tempMemory_[adjReq.device];
+        // An RMM pool has not been set. Fall back to FAISS' temporary
+        // allocator If we don't have enough space in our temporary memory
+        // manager, we need to allocate this request separately
+        auto& tempMem = tempMemory_[adjReq.device];
 
-            if (adjReq.size > tempMem->getSizeAvailable()) {
-                // We need to allocate this ourselves
-                AllocRequest newReq = adjReq;
-                newReq.space = MemorySpace::Device;
-                newReq.type = AllocType::TemporaryMemoryOverflow;
+        if (adjReq.size > tempMem->getSizeAvailable()) {
+            // We need to allocate this ourselves
+            AllocRequest newReq = adjReq;
+            newReq.space = MemorySpace::Device;
+            newReq.type = AllocType::TemporaryMemoryOverflow;
 
-                if (allocLogging_) {
-                    std::cout
-                            << "StandardGpuResources: alloc fail "
-                            << adjReq.toString()
-                            << " (no temp space); retrying as MemorySpace::Device\n";
-                }
-
-                return allocMemory(newReq);
+            if (allocLogging_) {
+                std::cout
+                        << "StandardGpuResources: alloc fail "
+                        << adjReq.toString()
+                        << " (no temp space); retrying as MemorySpace::Device\n";
             }
 
-            // Otherwise, we can handle this locally
-            p = tempMemory_[adjReq.device]->allocMemory(
-                    adjReq.stream, adjReq.size);
+            return allocMemory(newReq);
+        }
+
+        // Otherwise, we can handle this locally
+        p = tempMemory_[adjReq.device]->allocMemory(adjReq.stream, adjReq.size);
         // }
     } else if (adjReq.space == MemorySpace::Device) {
+        bool allocSuccess = false;
 #if defined USE_NVIDIA_RAFT
         try {
-            // printf("inside device allocator; requested size %zu\n", adjReq.size);
-            rmm::mr::device_memory_resource* cmr = rmm::mr::get_per_device_resource(rmm::cuda_device_id{adjReq.device});
-            p = cmr->allocate(adjReq.size, adjReq.stream);
+            rmm::mr::device_memory_resource* cmr =
+                    rmm::mr::get_per_device_resource(
+                            rmm::cuda_device_id{adjReq.device});
+            // if current rmm resource is a device-only resource, use it for
+            // allocation
+            if (dynamic_cast<rmm::mr::cuda_memory_resource*>(cmr) ||
+                dynamic_cast<
+                        rmm::mr::pool_memory_resource<cuda_memory_resource>*>(
+                        cmr)) {
+                p = cmr->allocate(adjReq.size, adjReq.stream);
+                allocSuccess = true;
+            }
         } catch (const std::bad_alloc& rmm_ex) {
             FAISS_THROW_MSG("CUDA memory allocation error");
         }
 #else
-        auto err = cudaMalloc(&p, adjReq.size);
+        // if rmm resource does not support device-only allocation, fall-back to
+        // FAISS impl
+        if (!allocSuccess) {
+            auto err = cudaMalloc(&p, adjReq.size);
 
-        // Throw if we fail to allocate
-        if (err != cudaSuccess) {
-            // FIXME: as of CUDA 11, a memory allocation error appears to be
-            // presented via cudaGetLastError as well, and needs to be cleared.
-            // Just call the function to clear it
-            cudaGetLastError();
+            // Throw if we fail to allocate
+            if (err != cudaSuccess) {
+                // FIXME: as of CUDA 11, a memory allocation error appears to be
+                // presented via cudaGetLastError as well, and needs to be
+                // cleared. Just call the function to clear it
+                cudaGetLastError();
 
-            std::stringstream ss;
-            ss << "StandardGpuResources: alloc fail " << adjReq.toString()
-               << " (cudaMalloc error " << cudaGetErrorString(err) << " ["
-               << (int)err << "])\n";
-            auto str = ss.str();
+                std::stringstream ss;
+                ss << "StandardGpuResources: alloc fail " << adjReq.toString()
+                   << " (cudaMalloc error " << cudaGetErrorString(err) << " ["
+                   << (int)err << "])\n";
+                auto str = ss.str();
 
-            if (allocLogging_) {
-                std::cout << str;
+                if (allocLogging_) {
+                    std::cout << str;
+                }
+
+                FAISS_THROW_IF_NOT_FMT(err == cudaSuccess, "%s", str.c_str());
             }
-
-            FAISS_THROW_IF_NOT_FMT(err == cudaSuccess, "%s", str.c_str());
         }
 #endif
     } else if (adjReq.space == MemorySpace::Unified) {
@@ -620,8 +637,7 @@ void StandardGpuResourcesImpl::deallocMemory(int device, void* p) {
         if (dynamic_cast<rmm::mr::pool_memory_resource<
                     rmm::mr::cuda_memory_resource>*>(mr)) {
             mr->deallocate(p, req.size, req.stream);
-        }
-        else {
+        } else {
             tempMemory_[device]->deallocMemory(device, req.stream, req.size, p);
         }
 
@@ -631,7 +647,9 @@ void StandardGpuResourcesImpl::deallocMemory(int device, void* p) {
 #if defined USE_NVIDIA_RAFT
         if (req.space == MemorySpace::Device) {
             // cmr->deallocate(p, req.size, req.stream);
-            rmm::mr::device_memory_resource* cmr = rmm::mr::get_per_device_resource(rmm::cuda_device_id{req.device});
+            rmm::mr::device_memory_resource* cmr =
+                    rmm::mr::get_per_device_resource(
+                            rmm::cuda_device_id{req.device});
             cmr->deallocate(p, req.size, req.stream);
         } else if (req.space == MemorySpace::Unified) {
             mmr->deallocate(p, req.size, req.stream);

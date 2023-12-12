@@ -303,8 +303,6 @@ void RaftIVFPQ::search(
     FAISS_ASSERT(cols == dim_);
     FAISS_THROW_IF_NOT(nprobe > 0 && nprobe <= numLists_);
 
-//     printf("all assertions completed\n");
-
     const raft::device_resources& raft_handle =
             resources_->getRaftHandleCurrentDevice();
     raft::neighbors::ivf_pq::search_params pams;

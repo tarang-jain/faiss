@@ -842,7 +842,7 @@ void fvec_L2sqr_by_idx(
             if (idsj[i] < 0) {
                 disj[i] = INFINITY;
             } else {
-                // disj[i] = fvec_L2sqr(xj, y + d * idsj[i], d);
+                disj[i] = fvec_L2sqr(xj, y + d * idsj[i], d);
             }
         }
     }

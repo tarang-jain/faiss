@@ -319,16 +319,16 @@ void RaftIVFPQ::search(
     auto out_dists_view = raft::make_device_matrix_view<float, idx_t>(
             outDistances.data(), (idx_t)numQueries, (idx_t)k_);
 
-//     raft::neighbors::ivf_pq::search<float, idx_t>(
-//             raft_handle,
-//             pams,
-//             raft_knn_index.value(),
-//             queries_view,
-//             out_inds_view,
-//             out_dists_view);
+    raft::neighbors::ivf_pq::search<float, idx_t>(
+            raft_handle,
+            pams,
+            raft_knn_index.value(),
+            queries_view,
+            out_inds_view,
+            out_dists_view);
     
     raft_handle.sync_stream();
-//     printf("raft index search completed\n");
+    printf("raft index search completed\n");
 
     /// Identify NaN rows and mask their nearest neighbors
 //     auto nan_flag = raft::make_device_vector<bool>(raft_handle, numQueries);

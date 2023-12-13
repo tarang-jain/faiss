@@ -540,9 +540,6 @@ void* StandardGpuResourcesImpl::allocMemory(const AllocRequest& req) {
             // device.
             p = mmr->allocate_async(adjReq.size, adjReq.stream);
             adjReq.mr = mmr;
-            printf("Managed memory allocation attempted. allocated %zu bytes using mmr at pointer %p\n",
-                   adjReq.size,
-                   p);
         } catch (const std::bad_alloc& rmm_ex) {
             FAISS_THROW_MSG("CUDA memory allocation error");
         }
@@ -585,8 +582,6 @@ void* StandardGpuResourcesImpl::allocMemory(const AllocRequest& req) {
 void StandardGpuResourcesImpl::deallocMemory(int device, void* p) {
     FAISS_ASSERT(isInitialized(device));
 
-    printf("attempting to deallocate %p\n", p);
-
     if (!p) {
         return;
     }
@@ -603,9 +598,6 @@ void StandardGpuResourcesImpl::deallocMemory(int device, void* p) {
 
     if (req.space == MemorySpace::Temporary) {
         tempMemory_[device]->deallocMemory(device, req.stream, req.size, p);
-        printf("deallocated %zu bytes from FAISS temporary memory at pointer %p\n",
-               req.size,
-               p);
     } else if (
             req.space == MemorySpace::Device ||
             req.space == MemorySpace::Unified) {
@@ -624,12 +616,7 @@ void StandardGpuResourcesImpl::deallocMemory(int device, void* p) {
         FAISS_ASSERT_FMT(false, "unknown MemorySpace %d", (int)req.space);
     }
 
-    printf("attempting to erase 'it' for %p\n", p);
-    auto it2 = a.find(p);
-    printf("%p %p %p\n", it, it2, a.end());
-    // it->second.mr.reset();
     a.erase(it);
-    printf("erased 'it' for %p\n", p);
 }
 
 size_t StandardGpuResourcesImpl::getTempMemoryAvailable(int device) const {

@@ -80,7 +80,7 @@ def compute_nlist(numVecs):
 
 
 # set the RMM pool memory resource for faster allocations
-mr = rmm.mr.PoolMemoryResource(rmm.mr.CudaMemoryResource(), initial_pool_size=2**30, maximum_pool_size=2**31)
+mr = rmm.mr.PoolMemoryResource(rmm.mr.CudaMemoryResource())
 rmm.mr.set_current_device_resource(mr)
 
 def bench_train_milliseconds(index, trainVecs, use_raft):

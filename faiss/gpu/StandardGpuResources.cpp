@@ -22,12 +22,9 @@
 
 #if defined USE_NVIDIA_RAFT
 #include <raft/core/device_resources.hpp>
-#include <rmm/mr/device/cuda_memory_resource.hpp>
-#include <rmm/mr/device/device_memory_resource.hpp>
 #include <rmm/mr/device/managed_memory_resource.hpp>
 #include <rmm/mr/device/per_device_resource.hpp>
 #include <rmm/mr/host/pinned_memory_resource.hpp>
-#include <cuda/memory_resource>
 #include <memory>
 #endif
 
@@ -508,9 +505,6 @@ void* StandardGpuResourcesImpl::allocMemory(const AllocRequest& req) {
 
             p = current_mr->allocate_async(adjReq.size, adjReq.stream);
             adjReq.mr = current_mr;
-            printf("allocated %zu bytes using current_mr at pointer %p\n",
-                   adjReq.size,
-                   p);
         } catch (const std::bad_alloc& rmm_ex) {
             FAISS_THROW_MSG("CUDA memory allocation error");
         }
@@ -616,10 +610,7 @@ void StandardGpuResourcesImpl::deallocMemory(int device, void* p) {
             req.space == MemorySpace::Device ||
             req.space == MemorySpace::Unified) {
 #if defined USE_NVIDIA_RAFT
-        req.mr->deallocate(p, req.size, req.stream);
-        printf("deallocated %zu bytes from RMM mr at pointer %p\n",
-               req.size,
-               p);
+        req.mr->deallocate_async(p, req.size, req.stream);
 #else
         auto err = cudaFree(p);
         FAISS_ASSERT_FMT(

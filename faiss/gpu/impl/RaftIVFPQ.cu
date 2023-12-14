@@ -318,7 +318,7 @@ void RaftIVFPQ::search(
     auto out_dists_view = raft::make_device_matrix_view<float, idx_t>(
             outDistances.data(), (idx_t)numQueries, (idx_t)k_);
 {
-        raft::common::nvtx::range<common::nvtx::domain::raft> fun_scope("RaftIVFPQ::search(%d)", queries.getSize(0));
+        raft::common::nvtx::range<raft::common::nvtx::domain::raft> fun_scope("RaftIVFPQ::search(%d)", queries.getSize(0));
     raft::neighbors::ivf_pq::search<float, idx_t>(
             raft_handle,
             pams,
@@ -330,7 +330,7 @@ void RaftIVFPQ::search(
     }
 
     {
-        raft::common::nvtx::range<common::nvtx::domain::raft> fun_scope("RaftIVFPQ::nan_filtering(%d)", queries.getSize(0));
+        raft::common::nvtx::range<raft::common::nvtx::domain::raft> fun_scope("RaftIVFPQ::nan_filtering(%d)", queries.getSize(0));
     /// Identify NaN rows and mask their nearest neighbors
     auto nan_flag = raft::make_device_vector<bool>(raft_handle, numQueries);
 

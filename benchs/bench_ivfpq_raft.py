@@ -48,8 +48,8 @@ group = parser.add_argument_group('benchmarking options')
 #    help='whether to benchmark train operation on GPU index')
 # aa('--bm_add', default=False, action='store_true',
 #    help='whether to benchmark add operation on GPU index')
-# aa('--bm_search', default=True,
-#    help='whether to benchmark search operation on GPU index')
+aa('--bm_search', default=True,
+   help='whether to benchmark search operation on GPU index')
 aa('--raft_only', default=False, action='store_true',
    help='whether to only produce RAFT enabled benchmarks')
 

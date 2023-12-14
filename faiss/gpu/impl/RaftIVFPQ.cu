@@ -28,6 +28,7 @@
 
 #include <raft/neighbors/ivf_pq.cuh>
 #include <raft/neighbors/ivf_pq_helpers.cuh>
+#include <raft/core/nvtx.hpp>
 
 #include <limits>
 #include <memory>
@@ -293,6 +294,8 @@ void RaftIVFPQ::search(
         int k,
         Tensor<float, 2, true>& outDistances,
         Tensor<idx_t, 2, true>& outIndices) {
+    {
+        common::nvtx::range<common::nvtx::domain::raft> fun_scope("RaftIVFPQ::search(%d)", queries.getSize(0));
     uint32_t numQueries = queries.getSize(0);
     uint32_t cols = queries.getSize(1);
     idx_t k_ = std::min(static_cast<idx_t>(k), raft_knn_index.value().size());
@@ -323,7 +326,11 @@ void RaftIVFPQ::search(
             queries_view,
             out_inds_view,
             out_dists_view);
-    
+    raft_handle.sync_stream();
+    }
+
+    {
+        common::nvtx::range<common::nvtx::domain::raft> fun_scope("RaftIVFPQ::nan_filtering(%d)", queries.getSize(0));
     /// Identify NaN rows and mask their nearest neighbors
     auto nan_flag = raft::make_device_vector<bool>(raft_handle, numQueries);
 
@@ -355,6 +362,7 @@ void RaftIVFPQ::search(
                 return out_dists[i];
             });
     raft_handle.sync_stream();
+    }
 }
 
 idx_t RaftIVFPQ::addVectors(

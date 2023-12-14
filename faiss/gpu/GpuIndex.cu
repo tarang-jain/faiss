@@ -217,6 +217,12 @@ void GpuIndex::search(
         return;
     }
 
+//     // Start measuring time
+//     auto search_start = std::chrono::high_resolution_clock::now();
+
+//     // Output the duration
+//     std::cout << "Elapsed time: " << duration.count() << " seconds" << std::endl;
+
     auto stream = resources_->getDefaultStream(config_.device);
 
     // We guarantee that the searchImpl_ will be called with device-resident
@@ -255,6 +261,12 @@ void GpuIndex::search(
     if (!usePaged) {
         searchNonPaged_(n, x, k, outDistances.data(), outLabels.data(), params);
     }
+
+    // // End measuring time
+    // auto end = std::chrono::high_resolution_clock::now();
+
+    // // Calculate the duration
+    // std::chrono::duration<double> duration = end - start;
 
     // Copy back if necessary
     fromDevice<float, 2>(outDistances, distances, stream);

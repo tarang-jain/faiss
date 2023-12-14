@@ -294,8 +294,7 @@ void RaftIVFPQ::search(
         int k,
         Tensor<float, 2, true>& outDistances,
         Tensor<idx_t, 2, true>& outIndices) {
-    {
-        common::nvtx::range<common::nvtx::domain::raft> fun_scope("RaftIVFPQ::search(%d)", queries.getSize(0));
+    
     uint32_t numQueries = queries.getSize(0);
     uint32_t cols = queries.getSize(1);
     idx_t k_ = std::min(static_cast<idx_t>(k), raft_knn_index.value().size());
@@ -318,7 +317,8 @@ void RaftIVFPQ::search(
             outIndices.data(), (idx_t)numQueries, (idx_t)k_);
     auto out_dists_view = raft::make_device_matrix_view<float, idx_t>(
             outDistances.data(), (idx_t)numQueries, (idx_t)k_);
-
+{
+        common::nvtx::range<common::nvtx::domain::raft> fun_scope("RaftIVFPQ::search(%d)", queries.getSize(0));
     raft::neighbors::ivf_pq::search<float, idx_t>(
             raft_handle,
             pams,

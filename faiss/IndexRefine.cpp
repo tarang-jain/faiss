@@ -14,6 +14,8 @@
 #include <faiss/utils/distances.h>
 #include <faiss/utils/utils.h>
 #include <raft/util/cudart_utils.hpp>
+
+#include <raft/core/nvtx.hpp>
 namespace faiss {
 
 /***************************************************
@@ -275,6 +277,8 @@ void IndexRefineFlat::search(
     base_index->search(
             n, x, k_base, base_distances, base_labels, base_index_params);
     
+    {
+        raft::common::nvtx::range<raft::common::nvtx::domain::raft> fun_scope("IndexRefineFlat::refinement(%d)", n);
     for (int i = 0; i < n * k_base; i++)
         assert(base_labels[i] >= -1 && base_labels[i] < ntotal);
 
@@ -296,6 +300,7 @@ void IndexRefineFlat::search(
                 n, k, labels, distances, k_base, base_labels, base_distances);
     } else {
         FAISS_THROW_MSG("Metric type not supported");
+    }
     }
 }
 

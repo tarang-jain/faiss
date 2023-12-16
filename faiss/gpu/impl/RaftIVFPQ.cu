@@ -32,7 +32,7 @@
 
 #include <limits>
 #include <memory>
-
+#include <chrono>
 namespace faiss {
 namespace gpu {
 
@@ -317,8 +317,10 @@ void RaftIVFPQ::search(
             outIndices.data(), (idx_t)numQueries, (idx_t)k_);
     auto out_dists_view = raft::make_device_matrix_view<float, idx_t>(
             outDistances.data(), (idx_t)numQueries, (idx_t)k_);
-{
-        raft::common::nvtx::range<raft::common::nvtx::domain::raft> fun_scope("RaftIVFPQ::search(%d)", queries.getSize(0));
+// {
+//         raft::common::nvtx::range<raft::common::nvtx::domain::raft> fun_scope("RaftIVFPQ::search(%d)", queries.getSize(0));
+// Get starting timepoint
+    auto raft_start = std::chrono::high_resolution_clock::now();
     raft::neighbors::ivf_pq::search<float, idx_t>(
             raft_handle,
             pams,
@@ -327,10 +329,14 @@ void RaftIVFPQ::search(
             out_inds_view,
             out_dists_view);
     raft_handle.sync_stream();
-    }
+    // Get ending timepoint
+    auto raft_stop = std::chrono::high_resolution_clock::now();
+//     }
+    
+    auto filter_start = std::chrono::high_resolution_clock::now();
 
-    {
-        raft::common::nvtx::range<raft::common::nvtx::domain::raft> fun_scope("RaftIVFPQ::nan_filtering(%d)", queries.getSize(0));
+//     {
+        // raft::common::nvtx::range<raft::common::nvtx::domain::raft> fun_scope("RaftIVFPQ::nan_filtering(%d)", queries.getSize(0));
     /// Identify NaN rows and mask their nearest neighbors
     auto nan_flag = raft::make_device_vector<bool>(raft_handle, numQueries);
 
@@ -362,7 +368,11 @@ void RaftIVFPQ::search(
                 return out_dists[i];
             });
     raft_handle.sync_stream();
-    }
+//     }
+    auto filter_stop = std::chrono::high_resolution_clock::now();
+    auto raft_duration = std::chrono::duration_cast<milliseconds>(raft_stop - raft_start);
+    auto filter_duration = std::chrono::duration_cast<milliseconds>(filter_stop - fiter_start);
+    printf("raft_time %f, filter_time %f\n", raft_duration, filter_duration);
 }
 
 idx_t RaftIVFPQ::addVectors(

@@ -370,8 +370,8 @@ void RaftIVFPQ::search(
     raft_handle.sync_stream();
 //     }
     auto filter_stop = std::chrono::high_resolution_clock::now();
-    auto raft_duration = std::chrono::duration_cast<milliseconds>(raft_stop - raft_start);
-    auto filter_duration = std::chrono::duration_cast<milliseconds>(filter_stop - fiter_start);
+    auto raft_duration = std::chrono::duration_cast<std::chrono::milliseconds>(raft_stop - raft_start);
+    auto filter_duration = std::chrono::duration_cast<std::chrono::milliseconds>(filter_stop - filter_start);
     printf("raft_time %f, filter_time %f\n", raft_duration, filter_duration);
 }
 

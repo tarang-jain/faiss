@@ -26,13 +26,13 @@
 #include <faiss/gpu/impl/RaftIVFPQ.cuh>
 #include <faiss/gpu/utils/Transpose.cuh>
 
+#include <raft/core/nvtx.hpp>
 #include <raft/neighbors/ivf_pq.cuh>
 #include <raft/neighbors/ivf_pq_helpers.cuh>
-#include <raft/core/nvtx.hpp>
 
+#include <chrono>
 #include <limits>
 #include <memory>
-#include <chrono>
 namespace faiss {
 namespace gpu {
 
@@ -294,7 +294,6 @@ void RaftIVFPQ::search(
         int k,
         Tensor<float, 2, true>& outDistances,
         Tensor<idx_t, 2, true>& outIndices) {
-    
     uint32_t numQueries = queries.getSize(0);
     uint32_t cols = queries.getSize(1);
     idx_t k_ = std::min(static_cast<idx_t>(k), raft_knn_index.value().size());
@@ -317,9 +316,10 @@ void RaftIVFPQ::search(
             outIndices.data(), (idx_t)numQueries, (idx_t)k_);
     auto out_dists_view = raft::make_device_matrix_view<float, idx_t>(
             outDistances.data(), (idx_t)numQueries, (idx_t)k_);
-// {
-//         raft::common::nvtx::range<raft::common::nvtx::domain::raft> fun_scope("RaftIVFPQ::search(%d)", queries.getSize(0));
-// Get starting timepoint
+    // {
+    //         raft::common::nvtx::range<raft::common::nvtx::domain::raft>
+    //         fun_scope("RaftIVFPQ::search(%d)", queries.getSize(0));
+    // Get starting timepoint
     auto raft_start = std::chrono::high_resolution_clock::now();
     raft::neighbors::ivf_pq::search<float, idx_t>(
             raft_handle,
@@ -331,48 +331,59 @@ void RaftIVFPQ::search(
     raft_handle.sync_stream();
     // Get ending timepoint
     auto raft_stop = std::chrono::high_resolution_clock::now();
-//     }
-    
+    //     }
+
     auto filter_start = std::chrono::high_resolution_clock::now();
 
-//     {
-        // raft::common::nvtx::range<raft::common::nvtx::domain::raft> fun_scope("RaftIVFPQ::nan_filtering(%d)", queries.getSize(0));
+    //     {
+    // raft::common::nvtx::range<raft::common::nvtx::domain::raft>
+    // fun_scope("RaftIVFPQ::nan_filtering(%d)", queries.getSize(0));
     /// Identify NaN rows and mask their nearest neighbors
     auto nan_flag = raft::make_device_vector<bool>(raft_handle, numQueries);
 
-    validRowIndices(resources_, queries, nan_flag.data_handle());
+    idx_t n_rows_valid =
+            validRowIndices(resources_, queries, nan_flag.data_handle());
 
-    raft::linalg::map_offset(
-            raft_handle,
-            raft::make_device_vector_view(outIndices.data(), numQueries * k_),
-            [nan_flag = nan_flag.data_handle(),
-             out_inds = outIndices.data(),
-             k_] __device__(uint32_t i) {
-                uint32_t row = i / k_;
-                if (!nan_flag[row])
-                    return idx_t(-1);
-                return out_inds[i];
-            });
+    if (n_rows_valid < numQueries) {
+        raft::linalg::map_offset(
+                raft_handle,
+                raft::make_device_vector_view(
+                        outIndices.data(), numQueries * k_),
+                [nan_flag = nan_flag.data_handle(),
+                 out_inds = outIndices.data(),
+                 k_] __device__(uint32_t i) {
+                    uint32_t row = i / k_;
+                    if (!nan_flag[row])
+                        return idx_t(-1);
+                    return out_inds[i];
+                });
 
-    float max_val = std::numeric_limits<float>::max();
-    raft::linalg::map_offset(
-            raft_handle,
-            raft::make_device_vector_view(outDistances.data(), numQueries * k_),
-            [nan_flag = nan_flag.data_handle(),
-             out_dists = outDistances.data(),
-             max_val,
-             k_] __device__(uint32_t i) {
-                uint32_t row = i / k_;
-                if (!nan_flag[row])
-                    return max_val;
-                return out_dists[i];
-            });
+        float max_val = std::numeric_limits<float>::max();
+        raft::linalg::map_offset(
+                raft_handle,
+                raft::make_device_vector_view(
+                        outDistances.data(), numQueries * k_),
+                [nan_flag = nan_flag.data_handle(),
+                 out_dists = outDistances.data(),
+                 max_val,
+                 k_] __device__(uint32_t i) {
+                    uint32_t row = i / k_;
+                    if (!nan_flag[row])
+                        return max_val;
+                    return out_dists[i];
+                });
+    }
     raft_handle.sync_stream();
-//     }
+    //     }
     auto filter_stop = std::chrono::high_resolution_clock::now();
-    auto raft_duration = std::chrono::duration_cast<std::chrono::milliseconds>(raft_stop - raft_start);
-    auto filter_duration = std::chrono::duration_cast<std::chrono::milliseconds>(filter_stop - filter_start);
-    printf("raft_duration %d, filter_duration %d\n", raft_duration.count(), filter_duration.count());
+    auto raft_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+            raft_stop - raft_start);
+    auto filter_duration =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                    filter_stop - filter_start);
+    printf("raft_duration %d, filter_duration %d\n",
+           raft_duration.count(),
+           filter_duration.count());
 }
 
 idx_t RaftIVFPQ::addVectors(

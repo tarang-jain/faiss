@@ -554,14 +554,6 @@ void GpuIndexIVFPQ::verifyPQSettings_() const {
         }
     }
 
-    // Sub-quantizers must evenly divide dimensions available
-    FAISS_THROW_IF_NOT_FMT(
-            this->d % subQuantizers_ == 0,
-            "Number of sub-quantizers (%d) must be an "
-            "even divisor of the number of dimensions (%d)",
-            subQuantizers_,
-            this->d);
-
     // The number of bytes per encoded vector must be one we support
     FAISS_THROW_IF_NOT_FMT(
             ivfpqConfig_.interleavedLayout ||
@@ -571,6 +563,14 @@ void GpuIndexIVFPQ::verifyPQSettings_() const {
             subQuantizers_);
 
     if (!config_.use_raft) {
+        // Sub-quantizers must evenly divide dimensions available
+        FAISS_THROW_IF_NOT_FMT(
+                this->d % subQuantizers_ == 0,
+                "Number of sub-quantizers (%d) must be an "
+                "even divisor of the number of dimensions (%d)",
+                subQuantizers_,
+                this->d);
+
         // We must have enough shared memory on the current device to store
         // our lookup distances
         int lookupTableSize = sizeof(float);

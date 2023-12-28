@@ -358,7 +358,6 @@ void IVFPQ::setPQCentroids_(float* data) {
 }
 
 void IVFPQ::precomputeCodes_(Index* quantizer) {
-        printf("inside precomputeCodes_");
     FAISS_ASSERT(metric_ == MetricType::METRIC_L2);
 
     auto stream = resources_->getDefaultStreamCurrentDevice();

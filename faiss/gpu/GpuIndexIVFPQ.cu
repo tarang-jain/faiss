@@ -387,7 +387,7 @@ void GpuIndexIVFPQ::train(idx_t n, const float* x) {
         raft_idx_params.kmeans_n_iters = cp.niter;
         raft_idx_params.pq_bits = bitsPerCode_;
         raft_idx_params.pq_dim = subQuantizers_;
-        raft_idx_params.conservative_memory_allocation = true;
+        raft_idx_params.conservative_memory_allocation = false;
         raft_idx_params.add_data_on_build = false;
 
         auto raftIndex_ = std::static_pointer_cast<RaftIVFPQ, IVFPQ>(index_);

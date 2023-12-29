@@ -317,6 +317,8 @@ void RaftIVFPQ::search(
     auto out_dists_view = raft::make_device_matrix_view<float, idx_t>(
             outDistances.data(), (idx_t)numQueries, (idx_t)k_);
 
+//     raft_knn_index.emplace(raft::neighbors::ivf_pq::deserialize<int64_t>(raft_handle, "/raid/tarangj/datasets/deep-image-96-inner/index/faiss_trained_index"));
+
     raft::neighbors::ivf_pq::search<float, idx_t>(
             raft_handle,
             pams,
@@ -325,6 +327,9 @@ void RaftIVFPQ::search(
             out_inds_view,
             out_dists_view);
     raft_handle.sync_stream();
+    raft::print_device_vector("raft_knn_index.pq_centers", raft_knn_index.value().pq_centers().data_handle(), 100, std::cout);
+//     raft::print_device_vector("indices", indices, 100, std::cout);
+//     raft::print_device_vector("distances", distances, 100, std::cout);
 
     //     {
     // raft::common::nvtx::range<raft::common::nvtx::domain::raft>
@@ -364,6 +369,8 @@ void RaftIVFPQ::search(
                     return out_dists[i];
                 });
     }
+    raft::print_device_vector("indices_from_faiss", outIndices.data(), 100, std::cout);
+    raft::print_device_vector("distances_from_faiss", outDistances.data(), 100, std::cout);
 }
 
 idx_t RaftIVFPQ::addVectors(
@@ -390,6 +397,9 @@ idx_t RaftIVFPQ::addVectors(
                     raft::make_device_vector_view<const idx_t, idx_t>(
                             indices.data(), n_rows_valid)),
             raft_knn_index.value()));
+
+    raft::neighbors::ivf_pq::serialize(raft_handle, "/raid/tarangj/datasets/deep-image-96-inner/index/faiss_trained_index", raft_knn_index.value());
+        // printf("raft_ivfpq_index.size() %u\n", raft_ivfpq_index.size());
 
     return n_rows_valid;
 }
@@ -460,21 +470,6 @@ void RaftIVFPQ::copyInvertedListsFrom(const InvertedLists* ivf) {
 void RaftIVFPQ::setRaftIndex(raft::neighbors::ivf_pq::index<idx_t>&& idx) {
     raft_knn_index.emplace(std::move(idx));
     setBasePQCentroids_();
-    auto refOnly = DeviceTensor<float, 3, true>(
-            raft_knn_index.value().pq_centers().data_handle(),
-            {numSubQuantizers_, dimPerSubQuantizer_, numSubQuantizerCodes_});
-    DeviceTensor<float, 3, true> pqCentroidsMiddleCode(
-            resources_,
-            makeDevAlloc(
-                    AllocType::Quantizer,
-                    resources_->getDefaultStreamCurrentDevice()),
-            {numSubQuantizers_, numSubQuantizerCodes_, dimPerSubQuantizer_});
-    runTransposeAny(
-            refOnly,
-            1,
-            2,
-            pqCentroidsMiddleCode,
-            resources_->getDefaultStreamCurrentDevice());
 }
 
 void RaftIVFPQ::addEncodedVectorsToList_(
@@ -552,7 +547,7 @@ void RaftIVFPQ::setBasePQCentroids_() {
     raft::copy(
             pqCentroidsInnermostCode_.data(),
             raft_knn_index.value().pq_centers().data_handle(),
-            pqCentroidsInnermostCode_.numElements(),
+            raft_knn_index.value().pq_centers().size(),
             stream);
 
     DeviceTensor<float, 3, true> pqCentroidsMiddleCode(

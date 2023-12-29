@@ -381,9 +381,10 @@ void GpuIndexIVFPQ::train(idx_t n, const float* x) {
         raft::neighbors::ivf_pq::index_params raft_idx_params;
         raft_idx_params.n_lists = nlist;
         raft_idx_params.metric = metricFaissToRaft(metric_type, false);
-        raft_idx_params.kmeans_trainset_fraction =
-                static_cast<double>(cp.max_points_per_centroid * nlist) /
-                static_cast<double>(n);
+        // raft_idx_params.kmeans_trainset_fraction =
+        //         static_cast<double>(cp.max_points_per_centroid * nlist) /
+        //         static_cast<double>(n);
+        raft_idx_params.kmeans_trainset_fraction = 0.25;
         raft_idx_params.kmeans_n_iters = cp.niter;
         raft_idx_params.pq_bits = bitsPerCode_;
         raft_idx_params.pq_dim = subQuantizers_;
@@ -409,11 +410,12 @@ void GpuIndexIVFPQ::train(idx_t n, const float* x) {
         raft::copy(
                 pq.get_centroids(0, 0),
                 raft_ivfpq_index.pq_centers().data_handle(),
-                subQuantizers_ * pq.dsub * utils::pow2(bitsPerCode_),
-                resources_->getDefaultStream(config_.device));
+                raft_ivfpq_index.pq_centers().size(),
+                raft_handle.get_stream());
         raft_handle.sync_stream();
+        raft::print_device_vector("training pq centers", raft_ivfpq_index.pq_centers().data_handle(), 100, std::cout);
         raftIndex_->setRaftIndex(std::move(raft_ivfpq_index));
-    } else
+            } else
 #else
     if (config_.use_raft) {
         FAISS_THROW_MSG(

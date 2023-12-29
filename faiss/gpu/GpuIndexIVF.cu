@@ -425,8 +425,11 @@ void GpuIndexIVF::range_search_preassigned(
 }
 
 bool GpuIndexIVF::addImplRequiresIDs_() const {
-    // All IVF indices have storage for IDs
-    return true;
+    if (!config_.use_raft) {
+        // All IVF indices have storage for IDs
+        return true;
+    }
+    return this->ntotal != 0;
 }
 
 void GpuIndexIVF::trainQuantizer_(idx_t n, const float* x) {

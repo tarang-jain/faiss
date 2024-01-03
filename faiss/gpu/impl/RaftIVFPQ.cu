@@ -317,6 +317,8 @@ void RaftIVFPQ::search(
     auto out_dists_view = raft::make_device_matrix_view<float, idx_t>(
             outDistances.data(), (idx_t)numQueries, (idx_t)k_);
 
+    raft_knn_index.emplace(raft::neighbors::ivf_pq::deserialize<int64_t>(handle, "/raid/tarangj/datasets/deep-image-96-inner/index/raft_ivf_pq_large.nlist8192.pq_dim48.pq_bits8.ratio4.niter20"));
+
     raft::neighbors::ivf_pq::search<float, idx_t>(
             raft_handle,
             pams,

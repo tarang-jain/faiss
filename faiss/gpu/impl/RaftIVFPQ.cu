@@ -317,7 +317,7 @@ void RaftIVFPQ::search(
     auto out_dists_view = raft::make_device_matrix_view<float, idx_t>(
             outDistances.data(), (idx_t)numQueries, (idx_t)k_);
 
-    raft_knn_index.emplace(raft::neighbors::ivf_pq::deserialize<int64_t>(raft_handle, "/raid/tarangj/datasets/deep-image-96-inner/index/faiss_trained_index"));
+//     raft_knn_index.emplace(raft::neighbors::ivf_pq::deserialize<int64_t>(raft_handle, "/raid/tarangj/datasets/deep-image-96-inner/index/faiss_trained_index"));
 
     raft::neighbors::ivf_pq::search<float, idx_t>(
             raft_handle,

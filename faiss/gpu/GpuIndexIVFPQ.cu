@@ -414,6 +414,8 @@ void GpuIndexIVFPQ::train(idx_t n, const float* x) {
                 resources_->getDefaultStream(config_.device));
         raft_handle.sync_stream();
         raft::neighbors::ivf_pq::serialize(raft_handle, "/raid/tarangj/datasets/deep-image-96-inner/index/faiss_trained_index", raft_ivfpq_index);
+        raft_handle.sync_stream();
+        printf("raft_ivfpq_index.size() %u\n", raft_ivfpq_index.size());
         raftIndex_->setRaftIndex(std::move(raft_ivfpq_index));
             } else
 #else

@@ -469,21 +469,6 @@ void RaftIVFPQ::copyInvertedListsFrom(const InvertedLists* ivf) {
 void RaftIVFPQ::setRaftIndex(raft::neighbors::ivf_pq::index<idx_t>&& idx) {
     raft_knn_index.emplace(std::move(idx));
     setBasePQCentroids_();
-    auto refOnly = DeviceTensor<float, 3, true>(
-            raft_knn_index.value().pq_centers().data_handle(),
-            {numSubQuantizers_, dimPerSubQuantizer_, numSubQuantizerCodes_});
-    DeviceTensor<float, 3, true> pqCentroidsMiddleCode(
-            resources_,
-            makeDevAlloc(
-                    AllocType::Quantizer,
-                    resources_->getDefaultStreamCurrentDevice()),
-            {numSubQuantizers_, numSubQuantizerCodes_, dimPerSubQuantizer_});
-    runTransposeAny(
-            refOnly,
-            1,
-            2,
-            pqCentroidsMiddleCode,
-            resources_->getDefaultStreamCurrentDevice());
 }
 
 void RaftIVFPQ::addEncodedVectorsToList_(
@@ -561,7 +546,7 @@ void RaftIVFPQ::setBasePQCentroids_() {
     raft::copy(
             pqCentroidsInnermostCode_.data(),
             raft_knn_index.value().pq_centers().data_handle(),
-            pqCentroidsInnermostCode_.numElements(),
+            raft_knn_index.value().pq_centers().size(),
             stream);
 
     DeviceTensor<float, 3, true> pqCentroidsMiddleCode(

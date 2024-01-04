@@ -413,9 +413,8 @@ void GpuIndexIVFPQ::train(idx_t n, const float* x) {
                 raft_ivfpq_index.pq_centers().size(),
                 raft_handle.get_stream());
         raft_handle.sync_stream();
-        raft::print_device_vector("training pq centers", raft_ivfpq_index.pq_centers().data_handle(), 100, std::cout);
         raftIndex_->setRaftIndex(std::move(raft_ivfpq_index));
-            } else
+    } else
 #else
     if (config_.use_raft) {
         FAISS_THROW_MSG(

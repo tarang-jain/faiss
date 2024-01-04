@@ -421,8 +421,8 @@ void RaftIVFPQ::copyInvertedListsFrom(const InvertedLists* ivf) {
 
     // conservative memory alloc for cloning cpu inverted lists
     raft::neighbors::ivf_pq::list_spec<uint32_t, idx_t> raft_list_spec{
-            static_cast<uint32_t>(numSubQuantizers_),
             static_cast<uint32_t>(bitsPerSubQuantizer_),
+            static_cast<uint32_t>(numSubQuantizers_),
             true};
 
     for (size_t i = 0; i < nlist; ++i) {

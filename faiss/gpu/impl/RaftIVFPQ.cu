@@ -327,7 +327,7 @@ void RaftIVFPQ::search(
             out_inds_view,
             out_dists_view);
     raft_handle.sync_stream();
-    raft::print_device_vector("raft_knn_index.pq_centers", raft_knn_index.value().pq_centers().data_handle(), 100, std::cout);
+//     raft::print_device_vector("raft_knn_index.pq_centers", raft_knn_index.value().pq_centers().data_handle(), 100, std::cout);
 //     raft::print_device_vector("indices", indices, 100, std::cout);
 //     raft::print_device_vector("distances", distances, 100, std::cout);
 
@@ -369,8 +369,8 @@ void RaftIVFPQ::search(
                     return out_dists[i];
                 });
     }
-    raft::print_device_vector("indices_from_faiss", outIndices.data(), 100, std::cout);
-    raft::print_device_vector("distances_from_faiss", outDistances.data(), 100, std::cout);
+//     raft::print_device_vector("indices_from_faiss", outIndices.data(), 100, std::cout);
+//     raft::print_device_vector("distances_from_faiss", outDistances.data(), 100, std::cout);
 }
 
 idx_t RaftIVFPQ::addVectors(
@@ -398,7 +398,7 @@ idx_t RaftIVFPQ::addVectors(
                             indices.data(), n_rows_valid)),
             raft_knn_index.value()));
 
-    raft::neighbors::ivf_pq::serialize(raft_handle, "/raid/tarangj/datasets/deep-image-96-inner/index/faiss_trained_index", raft_knn_index.value());
+//     raft::neighbors::ivf_pq::serialize(raft_handle, "/raid/tarangj/datasets/deep-image-96-inner/index/faiss_trained_index", raft_knn_index.value());
         // printf("raft_ivfpq_index.size() %u\n", raft_ivfpq_index.size());
 
     return n_rows_valid;

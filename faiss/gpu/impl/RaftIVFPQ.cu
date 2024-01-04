@@ -368,8 +368,8 @@ void RaftIVFPQ::search(
                     return out_dists[i];
                 });
     }
-    raft::print_device_vector("indices_from_faiss", indices, 100, std::cout);
-    raft::print_device_vector("distances_from_faiss", distances, 100, std::cout);
+    raft::print_device_vector("indices_from_faiss", outIndices.data(), 100, std::cout);
+    raft::print_device_vector("distances_from_faiss", outDistances.data(), 100, std::cout);
 }
 
 idx_t RaftIVFPQ::addVectors(

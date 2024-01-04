@@ -317,7 +317,7 @@ void RaftIVFPQ::search(
     auto out_dists_view = raft::make_device_matrix_view<float, idx_t>(
             outDistances.data(), (idx_t)numQueries, (idx_t)k_);
 
-    raft_knn_index.emplace(raft::neighbors::ivf_pq::deserialize<int64_t>(raft_handle, "/raid/tarangj/datasets/deep-image-96-inner/index/raft_ivf_pq_large.nlist8192.pq_dim48.pq_bits8.ratio4.niter20"));
+//     raft_knn_index.emplace(raft::neighbors::ivf_pq::deserialize<int64_t>(raft_handle, "/raid/tarangj/datasets/deep-image-96-inner/index/raft_ivf_pq_large.nlist8192.pq_dim48.pq_bits8.ratio4.niter20"));
 
     raft::neighbors::ivf_pq::search<float, idx_t>(
             raft_handle,
@@ -327,6 +327,8 @@ void RaftIVFPQ::search(
             out_inds_view,
             out_dists_view);
     raft_handle.sync_stream();
+//     raft::print_device_vector("indices", indices, 100, std::cout);
+//     raft::print_device_vector("distances", distances, 100, std::cout);
 
     //     {
     // raft::common::nvtx::range<raft::common::nvtx::domain::raft>
@@ -366,6 +368,8 @@ void RaftIVFPQ::search(
                     return out_dists[i];
                 });
     }
+    raft::print_device_vector("indices_from_faiss", indices, 100, std::cout);
+    raft::print_device_vector("distances_from_faiss", distances, 100, std::cout);
 }
 
 idx_t RaftIVFPQ::addVectors(

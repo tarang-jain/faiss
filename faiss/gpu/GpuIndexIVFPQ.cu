@@ -410,9 +410,10 @@ void GpuIndexIVFPQ::train(idx_t n, const float* x) {
         raft::copy(
                 pq.get_centroids(0, 0),
                 raft_ivfpq_index.pq_centers().data_handle(),
-                subQuantizers_ * pq.dsub * utils::pow2(bitsPerCode_),
-                resources_->getDefaultStream(config_.device));
+                raft_ivfpq_index.pq_centers().size(),
+                raft_handle.get_stream());
         raft_handle.sync_stream();
+        raft::print_device_vector("training pq centers", raft_ivfpq_index.pq_centers().data_handle(), 100, std::cout);
         raftIndex_->setRaftIndex(std::move(raft_ivfpq_index));
             } else
 #else

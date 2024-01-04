@@ -393,6 +393,9 @@ idx_t RaftIVFPQ::addVectors(
                             indices.data(), n_rows_valid)),
             raft_knn_index.value()));
 
+    raft::neighbors::ivf_pq::serialize(raft_handle, "/raid/tarangj/datasets/deep-image-96-inner/index/faiss_trained_index", raft_knn_index.value());
+        // printf("raft_ivfpq_index.size() %u\n", raft_ivfpq_index.size());
+
     return n_rows_valid;
 }
 

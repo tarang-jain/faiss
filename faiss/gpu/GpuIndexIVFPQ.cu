@@ -381,10 +381,9 @@ void GpuIndexIVFPQ::train(idx_t n, const float* x) {
         raft::neighbors::ivf_pq::index_params raft_idx_params;
         raft_idx_params.n_lists = nlist;
         raft_idx_params.metric = metricFaissToRaft(metric_type, false);
-        // raft_idx_params.kmeans_trainset_fraction =
-        //         static_cast<double>(cp.max_points_per_centroid * nlist) /
-        //         static_cast<double>(n);
-        raft_idx_params.kmeans_trainset_fraction = 0.25;
+        raft_idx_params.kmeans_trainset_fraction =
+                static_cast<double>(cp.max_points_per_centroid * nlist) /
+                static_cast<double>(n);
         raft_idx_params.kmeans_n_iters = cp.niter;
         raft_idx_params.pq_bits = bitsPerCode_;
         raft_idx_params.pq_dim = subQuantizers_;

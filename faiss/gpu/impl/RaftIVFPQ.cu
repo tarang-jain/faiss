@@ -327,7 +327,6 @@ void RaftIVFPQ::search(
             out_inds_view,
             out_dists_view);
     raft_handle.sync_stream();
-     printf("search done\n");
 //     raft::print_device_vector("raft_knn_index.pq_centers", raft_knn_index.value().pq_centers().data_handle(), 100, std::cout);
 //     raft::print_device_vector("indices", indices, 100, std::cout);
 //     raft::print_device_vector("distances", distances, 100, std::cout);

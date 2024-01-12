@@ -336,7 +336,7 @@ void RaftIVFPQ::search(
     auto search_end_time = std::chrono::high_resolution_clock::now();
 
     // Calculate the duration
-    auto search_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+    auto search_duration = std::chrono::duration_cast<std::chrono::microseconds>(search_end_time - search_start_time);
 
     // Print the duration in microseconds
     std::cout << "Raft search Time taken: " << search_duration.count() << " microseconds" << std::endl;

@@ -319,6 +319,8 @@ void RaftIVFPQ::search(
     
     raft_handle.sync_stream();
 
+    std::cout << "n_queries" << numQueries << std::endl;
+
 //     raft_knn_index.emplace(raft::neighbors::ivf_pq::deserialize<int64_t>(raft_handle, "/raid/tarangj/datasets/deep-image-96-inner/index/faiss_trained_index"));
     // Get the starting time point
     auto search_start_time = std::chrono::high_resolution_clock::now();

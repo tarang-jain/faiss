@@ -316,8 +316,12 @@ void RaftIVFPQ::search(
             outIndices.data(), (idx_t)numQueries, (idx_t)k_);
     auto out_dists_view = raft::make_device_matrix_view<float, idx_t>(
             outDistances.data(), (idx_t)numQueries, (idx_t)k_);
+    
+    raft_handle.sync_stream();
 
 //     raft_knn_index.emplace(raft::neighbors::ivf_pq::deserialize<int64_t>(raft_handle, "/raid/tarangj/datasets/deep-image-96-inner/index/faiss_trained_index"));
+    // Get the starting time point
+    auto search_start_time = std::chrono::high_resolution_clock::now();
 
     raft::neighbors::ivf_pq::search<float, idx_t>(
             raft_handle,
@@ -327,6 +331,18 @@ void RaftIVFPQ::search(
             out_inds_view,
             out_dists_view);
     raft_handle.sync_stream();
+
+    // Get the ending time point
+    auto search_end_time = std::chrono::high_resolution_clock::now();
+
+    // Calculate the duration
+    auto search_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+
+    // Print the duration in microseconds
+    std::cout << "Raft search Time taken: " << search_duration.count() << " microseconds" << std::endl;
+
+    // Get the ending time point
+    auto nan_filtering_start = std::chrono::high_resolution_clock::now();
 //     raft::print_device_vector("raft_knn_index.pq_centers", raft_knn_index.value().pq_centers().data_handle(), 100, std::cout);
 //     raft::print_device_vector("indices", indices, 100, std::cout);
 //     raft::print_device_vector("distances", distances, 100, std::cout);
@@ -369,6 +385,12 @@ void RaftIVFPQ::search(
                     return out_dists[i];
                 });
     }
+    raft_handle.sync_stream();
+    auto nan_filtering_end = std::chrono::high_resolution_clock::now();
+
+     auto nan_filtering_duration = std::chrono::duration_cast<std::chrono::microseconds>(nan_filtering_end - nan_filtering_start);
+    // Print the duration in microseconds
+    std::cout << "nan_filtering Time taken: " << nan_filtering_duration.count() << " microseconds" << std::endl;
 //     raft::print_device_vector("indices_from_faiss", outIndices.data(), 100, std::cout);
 //     raft::print_device_vector("distances_from_faiss", outDistances.data(), 100, std::cout);
 }

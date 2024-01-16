@@ -104,11 +104,10 @@ idx_t inplaceGatherFilteredRows(
 //     raft_handle.sync_stream();
 //     raft::print_device_vector("vecs_post_processing", vecs.data() + 1000, 200, std::cout);
 
-    raft::matrix::gather(
-            raft_handle,
-            raft::make_device_matrix_view<idx_t, idx_t>(
-                    indices.data(), n_rows, (idx_t)1),
-            raft::make_const_mdspan(gather_indices.view()));
+    thrust::gather(raft_handle.get_thrust_policy(), gather_indices.data_handle(), gather_indices.data_handle() + gather_indices.size(),
+               indices.data(),
+               valid_indices.data_handle());
+    thrust::copy(raft_handle.get_thrust_policy(), valid_indices.data_handle(), valid_indices.data_handle() + n_rows_valid, indices.data());
 //     }
     return n_rows_valid;
 }

@@ -25,6 +25,7 @@
 #include <raft/core/device_mdarray.hpp>
 #include <raft/core/device_mdspan.hpp>
 #include <raft/linalg/map.cuh>
+#include <raft/linalg/coalesced_reduction.cuh>
 #include <raft/matrix/gather.cuh>
 
 #include <thrust/copy.h>
@@ -32,34 +33,22 @@
 
 namespace faiss {
 namespace gpu {
-
-idx_t validRowIndices(
+void validRowIndices(
         GpuResources* res,
         Tensor<float, 2, true>& vecs,
         bool* validRows) {
-    raft::device_resources& raft_handle = res->getRaftHandleCurrentDevice();
     idx_t n_rows = vecs.getSize(0);
     idx_t dim = vecs.getSize(1);
 
-    thrust::fill_n(raft_handle.get_thrust_policy(), validRows, n_rows, true);
-    raft::linalg::map_offset(
-            raft_handle,
-            raft::make_device_vector_view<bool, idx_t>(validRows, n_rows),
-            [vecs = vecs.data(), dim] __device__(idx_t i) {
-                for (idx_t col = 0; col < dim; col++) {
-                    if (!isfinite(vecs[i * dim + col])) {
-                        return false;
-                    }
-                }
-                return true;
-            });
-    idx_t n_rows_valid = thrust::reduce(
-            raft_handle.get_thrust_policy(),
-            validRows,
-            validRows + n_rows,
-            0);
-    
-    return n_rows_valid;
+    raft::linalg::coalescedReduction(validRows,
+                        vecs.data(),
+                        dim,
+                        n_rows,
+                        true,
+                        res->getDefaultStreamCurrentDevice(),
+                        false,
+                        [] __device__(float v, idx_t i) {return isfinite(v);},
+                        raft::mul_op());
 }
 
 idx_t inplaceGatherFilteredRows(
@@ -73,9 +62,11 @@ idx_t inplaceGatherFilteredRows(
     auto valid_rows =
             raft::make_device_vector<bool, idx_t>(raft_handle, n_rows);
 
-    idx_t n_rows_valid = validRowIndices(res, vecs, valid_rows.data_handle());
+    validRowIndices(res, vecs, valid_rows.data_handle());
 
-    if (n_rows_valid < n_rows) {
+    idx_t n_rows_valid = thrust::reduce(raft_handle.get_thrust_policy(), valid_rows.data_handle(), valid_rows.data_handle() + n_rows, 0);
+    
+
         auto gather_indices = raft::make_device_vector<idx_t, idx_t>(
                 raft_handle, n_rows_valid);
 
@@ -105,7 +96,6 @@ idx_t inplaceGatherFilteredRows(
                 raft::make_device_matrix_view<idx_t>(
                         indices.data(), n_rows, (idx_t)1),
                 raft::make_const_mdspan(gather_indices.view()));
-    }
 
     return n_rows_valid;
 }

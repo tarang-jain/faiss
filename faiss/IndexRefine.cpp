@@ -276,10 +276,7 @@ void IndexRefineFlat::search(
 
     base_index->search(
             n, x, k_base, base_distances, base_labels, base_index_params);
-    
-    // {
-    //     raft::common::nvtx::range<raft::common::nvtx::domain::raft> fun_scope("IndexRefineFlat::refinement(%d)", n);
-    // auto refinement_start = std::chrono::high_resolution_clock::now();
+
     for (int i = 0; i < n * k_base; i++)
         assert(base_labels[i] >= -1 && base_labels[i] < ntotal);
 
@@ -302,12 +299,6 @@ void IndexRefineFlat::search(
     } else {
         FAISS_THROW_MSG("Metric type not supported");
     }
-    // auto refinement_end = std::chrono::high_resolution_clock::now();
-
-    //   auto refinement_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-    //         refinement_end - refinement_start);
-    //   printf("faiss_refinement_duration %ld\n", refinement_duration.count());
-    // // }
 }
 
 } // namespace faiss

@@ -24,8 +24,8 @@
 
 #include <raft/core/device_mdarray.hpp>
 #include <raft/core/device_mdspan.hpp>
-#include <raft/linalg/map.cuh>
 #include <raft/linalg/coalesced_reduction.cuh>
+#include <raft/linalg/map.cuh>
 #include <raft/matrix/gather.cuh>
 
 #include <thrust/copy.h>
@@ -40,15 +40,16 @@ void validRowIndices(
     idx_t n_rows = vecs.getSize(0);
     idx_t dim = vecs.getSize(1);
 
-    raft::linalg::coalescedReduction(validRows,
-                        vecs.data(),
-                        dim,
-                        n_rows,
-                        true,
-                        res->getDefaultStreamCurrentDevice(),
-                        false,
-                        [] __device__(float v, idx_t i) {return isfinite(v);},
-                        raft::mul_op());
+    raft::linalg::coalescedReduction(
+            validRows,
+            vecs.data(),
+            dim,
+            n_rows,
+            true,
+            res->getDefaultStreamCurrentDevice(),
+            false,
+            [] __device__(float v, idx_t i) { return isfinite(v); },
+            raft::mul_op());
 }
 
 idx_t inplaceGatherFilteredRows(
@@ -64,38 +65,41 @@ idx_t inplaceGatherFilteredRows(
 
     validRowIndices(res, vecs, valid_rows.data_handle());
 
-    idx_t n_rows_valid = thrust::reduce(raft_handle.get_thrust_policy(), valid_rows.data_handle(), valid_rows.data_handle() + n_rows, 0);
-    
+    idx_t n_rows_valid = thrust::reduce(
+            raft_handle.get_thrust_policy(),
+            valid_rows.data_handle(),
+            valid_rows.data_handle() + n_rows,
+            0);
 
-        auto gather_indices = raft::make_device_vector<idx_t, idx_t>(
-                raft_handle, n_rows_valid);
+    auto gather_indices =
+            raft::make_device_vector<idx_t, idx_t>(raft_handle, n_rows_valid);
 
-        auto count = thrust::make_counting_iterator(0);
+    auto count = thrust::make_counting_iterator(0);
 
-        thrust::copy_if(
-                raft_handle.get_thrust_policy(),
-                count,
-                count + n_rows,
-                gather_indices.data_handle(),
-                [valid_rows = valid_rows.data_handle()] __device__(auto i) {
-                    return valid_rows[i];
-                });
+    thrust::copy_if(
+            raft_handle.get_thrust_policy(),
+            count,
+            count + n_rows,
+            gather_indices.data_handle(),
+            [valid_rows = valid_rows.data_handle()] __device__(auto i) {
+                return valid_rows[i];
+            });
 
-        raft::matrix::gather(
-                raft_handle,
-                raft::make_device_matrix_view<float, idx_t>(
-                        vecs.data(), n_rows, dim),
-                raft::make_const_mdspan(gather_indices.view()),
-                (idx_t)16);
+    raft::matrix::gather(
+            raft_handle,
+            raft::make_device_matrix_view<float, idx_t>(
+                    vecs.data(), n_rows, dim),
+            raft::make_const_mdspan(gather_indices.view()),
+            (idx_t)16);
 
-        auto valid_indices = raft::make_device_vector<idx_t, idx_t>(
-                raft_handle, n_rows_valid);
+    auto valid_indices =
+            raft::make_device_vector<idx_t, idx_t>(raft_handle, n_rows_valid);
 
-        raft::matrix::gather(
-                raft_handle,
-                raft::make_device_matrix_view<idx_t>(
-                        indices.data(), n_rows, (idx_t)1),
-                raft::make_const_mdspan(gather_indices.view()));
+    raft::matrix::gather(
+            raft_handle,
+            raft::make_device_matrix_view<idx_t>(
+                    indices.data(), n_rows, (idx_t)1),
+            raft::make_const_mdspan(gather_indices.view()));
 
     return n_rows_valid;
 }

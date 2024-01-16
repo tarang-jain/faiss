@@ -15,7 +15,6 @@
 #include <faiss/gpu/utils/DeviceUtils.h>
 #include <faiss/gpu/utils/StaticUtils.h>
 #include <faiss/impl/FaissAssert.h>
-#include <chrono>
 #include <faiss/gpu/utils/CopyUtils.cuh>
 
 #include <algorithm>
@@ -133,7 +132,8 @@ void GpuIndex::addPaged_(idx_t n, const float* x, const idx_t* ids) {
     if (n > 0) {
         idx_t totalSize = n * this->d * sizeof(float);
 
-        if (!config_.use_raft && (totalSize > kAddPageSize || n > kAddVecSize)) {
+        if (!config_.use_raft &&
+            (totalSize > kAddPageSize || n > kAddVecSize)) {
             // How many vectors fit into kAddPageSize?
             idx_t maxNumVecsForPageSize =
                     kAddPageSize / (this->d * sizeof(float));
@@ -218,12 +218,6 @@ void GpuIndex::search(
         return;
     }
 
-//     // Start measuring time
-//     auto search_start = std::chrono::high_resolution_clock::now();
-
-//     // Output the duration
-//     std::cout << "Elapsed time: " << duration.count() << " seconds" << std::endl;
-
     auto stream = resources_->getDefaultStream(config_.device);
 
     // We guarantee that the searchImpl_ will be called with device-resident
@@ -258,40 +252,15 @@ void GpuIndex::search(
             usePaged = true;
         }
     }
-    
+
     // auto searchNonPaged_start = std::chrono::high_resolution_clock::now();
     if (!usePaged) {
         searchNonPaged_(n, x, k, outDistances.data(), outLabels.data(), params);
     }
 
-    // cudaStreamSynchronize(stream);
-    // auto searchNonPaged_end = std::chrono::high_resolution_clock::now();
-
-    // auto searchNonPaged_duration = std::chrono::duration_cast<std::chrono::microseconds>(
-    //         searchNonPaged_end - searchNonPaged_start);
-
-    // std::cout << "searchNonPaged Time taken: " << searchNonPaged_duration.count() << " microseconds" << std::endl;
-
-    // // End measuring time
-    // auto end = std::chrono::high_resolution_clock::now();
-
-    // // Calculate the duration
-    // std::chrono::duration<double> duration = end - start;
-
     // Copy back if necessary
-    // auto fromDeviceDistancesIndices_start = std::chrono::high_resolution_clock::now();
-
     fromDevice<float, 2>(outDistances, distances, stream);
     fromDevice<idx_t, 2>(outLabels, labels, stream);
-
-    // cudaStreamSynchronize(stream);
-
-    // auto fromDeviceDistancesIndices_end = std::chrono::high_resolution_clock::now();
-
-    // auto fromDeviceDistancesIndices_duration = std::chrono::duration_cast<std::chrono::microseconds>(
-    //         fromDeviceDistancesIndices_end - fromDeviceDistancesIndices_start);
-
-    // std::cout << "Raft proper search Time taken: " << fromDeviceDistancesIndices_duration.count() << " microseconds" << std::endl;
 }
 
 void GpuIndex::search_and_reconstruct(

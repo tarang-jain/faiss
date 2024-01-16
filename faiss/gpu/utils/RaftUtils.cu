@@ -75,7 +75,7 @@ idx_t inplaceGatherFilteredRows(
     
 //     std::cout << "n_rows_valid" << n_rows_valid << std::endl;
 
-    if (n_rows_valid < n_rows) {
+//     if (n_rows_valid < n_rows) {
 
     auto gather_indices =
             raft::make_device_vector<idx_t, idx_t>(raft_handle, n_rows_valid);
@@ -104,12 +104,12 @@ idx_t inplaceGatherFilteredRows(
 //     raft_handle.sync_stream();
 //     raft::print_device_vector("vecs_post_processing", vecs.data() + 1000, 200, std::cout);
 
-//     raft::matrix::gather(
-//             raft_handle,
-//             raft::make_device_matrix_view<idx_t, idx_t>(
-//                     indices.data(), n_rows, (idx_t)1),
-//             raft::make_const_mdspan(gather_indices.view()));
-    }
+    raft::matrix::gather(
+            raft_handle,
+            raft::make_device_matrix_view<idx_t, idx_t>(
+                    indices.data(), n_rows, (idx_t)1),
+            raft::make_const_mdspan(gather_indices.view()));
+//     }
     return n_rows_valid;
 }
 

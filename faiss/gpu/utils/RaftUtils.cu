@@ -73,6 +73,8 @@ idx_t inplaceGatherFilteredRows(
     
     std::cout << "n_rows_valid" << n_rows_valid << std::endl;
 
+    if (n_rows_valid < n_rows) {
+
     auto gather_indices =
             raft::make_device_vector<idx_t, idx_t>(raft_handle, n_rows_valid);
 
@@ -102,7 +104,7 @@ idx_t inplaceGatherFilteredRows(
             raft::make_device_matrix_view<idx_t>(
                     indices.data(), n_rows, (idx_t)1),
             raft::make_const_mdspan(gather_indices.view()));
-
+    }
     return n_rows_valid;
 }
 

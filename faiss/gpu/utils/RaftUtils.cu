@@ -92,7 +92,7 @@ idx_t inplaceGatherFilteredRows(
             });
     
     raft_handle.sync_stream();
-    raft::print_device_vector("gather_indices", gather_indices.data_handle(), gather_indices.size(), std::cout);
+    raft::print_device_vector("gather_indices", gather_indices.data_handle() + 1000, 200, std::cout);
 
     raft::matrix::gather(
             raft_handle,

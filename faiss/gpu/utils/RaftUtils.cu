@@ -29,6 +29,7 @@
 #include <raft/matrix/gather.cuh>
 
 #include <thrust/copy.h>
+#include <thrust/gather.h>
 #include <thrust/reduce.h>
 
 namespace faiss {
@@ -103,11 +104,13 @@ idx_t inplaceGatherFilteredRows(
     
 //     raft_handle.sync_stream();
 //     raft::print_device_vector("vecs_post_processing", vecs.data() + 1000, 200, std::cout);
+    
+    auto validIndices = raft::make_device_vector<idx_t, idx_t>(raft_handle, n_rows_valid);
 
     thrust::gather(raft_handle.get_thrust_policy(), gather_indices.data_handle(), gather_indices.data_handle() + gather_indices.size(),
                indices.data(),
-               valid_indices.data_handle());
-    thrust::copy(raft_handle.get_thrust_policy(), valid_indices.data_handle(), valid_indices.data_handle() + n_rows_valid, indices.data());
+               validIndices.data_handle());
+    thrust::copy(raft_handle.get_thrust_policy(), validIndices.data_handle(), validIndices.data_handle() + n_rows_valid, indices.data());
 //     }
     return n_rows_valid;
 }

@@ -70,6 +70,8 @@ idx_t inplaceGatherFilteredRows(
             valid_rows.data_handle(),
             valid_rows.data_handle() + n_rows,
             0);
+    
+    std::cout << "n_rows_valid" << n_rows_valid << std::endl;
 
     auto gather_indices =
             raft::make_device_vector<idx_t, idx_t>(raft_handle, n_rows_valid);

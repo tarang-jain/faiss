@@ -34,6 +34,7 @@
 
 namespace faiss {
 namespace gpu {
+
 void validRowIndices(
         GpuResources* res,
         Tensor<float, 2, true>& vecs,
@@ -61,8 +62,6 @@ idx_t inplaceGatherFilteredRows(
     idx_t n_rows = vecs.getSize(0);
     idx_t dim = vecs.getSize(1);
 
-//     raft::print_device_vector("vecs_pre_processing", vecs.data() + 1000, 200, std::cout);
-
     auto valid_rows =
             raft::make_device_vector<bool, idx_t>(raft_handle, n_rows);
 
@@ -73,45 +72,44 @@ idx_t inplaceGatherFilteredRows(
             valid_rows.data_handle(),
             valid_rows.data_handle() + n_rows,
             0);
-    
-//     std::cout << "n_rows_valid" << n_rows_valid << std::endl;
 
-//     if (n_rows_valid < n_rows) {
+    if (n_rows_valid < n_rows) {
+        auto gather_indices = raft::make_device_vector<idx_t, idx_t>(
+                raft_handle, n_rows_valid);
 
-    auto gather_indices =
-            raft::make_device_vector<idx_t, idx_t>(raft_handle, n_rows_valid);
+        auto count = thrust::make_counting_iterator(0);
 
-    auto count = thrust::make_counting_iterator(0);
+        thrust::copy_if(
+                raft_handle.get_thrust_policy(),
+                count,
+                count + n_rows,
+                gather_indices.data_handle(),
+                [valid_rows = valid_rows.data_handle()] __device__(auto i) {
+                    return valid_rows[i];
+                });
 
-    thrust::copy_if(
-            raft_handle.get_thrust_policy(),
-            count,
-            count + n_rows,
-            gather_indices.data_handle(),
-            [valid_rows = valid_rows.data_handle()] __device__(auto i) {
-                return valid_rows[i];
-            });
-    
-//     raft_handle.sync_stream();
-//     raft::print_device_vector("gather_indices", gather_indices.data_handle() + 1000, 200, std::cout);
+        raft::matrix::gather(
+                raft_handle,
+                raft::make_device_matrix_view<float, idx_t>(
+                        vecs.data(), n_rows, dim),
+                raft::make_const_mdspan(gather_indices.view()),
+                (idx_t)16);
 
-    raft::matrix::gather(
-            raft_handle,
-            raft::make_device_matrix_view<float, idx_t>(
-                    vecs.data(), n_rows, dim),
-            raft::make_const_mdspan(gather_indices.view()),
-            (idx_t)16);
-    
-//     raft_handle.sync_stream();
-//     raft::print_device_vector("vecs_post_processing", vecs.data() + 1000, 200, std::cout);
-    
-    auto validIndices = raft::make_device_vector<idx_t, idx_t>(raft_handle, n_rows_valid);
+        auto validIndices = raft::make_device_vector<idx_t, idx_t>(
+                raft_handle, n_rows_valid);
 
-    thrust::gather(raft_handle.get_thrust_policy(), gather_indices.data_handle(), gather_indices.data_handle() + gather_indices.size(),
-               indices.data(),
-               validIndices.data_handle());
-    thrust::copy(raft_handle.get_thrust_policy(), validIndices.data_handle(), validIndices.data_handle() + n_rows_valid, indices.data());
-//     }
+        thrust::gather(
+                raft_handle.get_thrust_policy(),
+                gather_indices.data_handle(),
+                gather_indices.data_handle() + gather_indices.size(),
+                indices.data(),
+                validIndices.data_handle());
+        thrust::copy(
+                raft_handle.get_thrust_policy(),
+                validIndices.data_handle(),
+                validIndices.data_handle() + n_rows_valid,
+                indices.data());
+    }
     return n_rows_valid;
 }
 

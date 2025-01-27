@@ -313,6 +313,8 @@ void IndexRefineFlat::search(
         del2.reset(base_distances);
     }
 
+    std::cout << "now doing base index search" << std::endl;
+
     base_index->search(
             n, x, k_base, base_distances, base_labels, base_index_params);
     

@@ -264,7 +264,9 @@ IndexRefineFlat::IndexRefineFlat(Index* base_index, const float* xb)
     is_trained = base_index->is_trained;
     refine_index = new IndexFlat(base_index->d, base_index->metric_type);
     own_refine_index = true;
+    printf("ntotal %d\n", base_index->ntotal);
     refine_index->add(base_index->ntotal, xb);
+    printf("refine index add success \n");
 }
 
 IndexRefineFlat::IndexRefineFlat() : IndexRefine() {

@@ -223,6 +223,7 @@ void CuvsCagra::search(
         float hashmap_max_fill_rate,
         idx_t num_random_samplings,
         idx_t rand_xor_mask) {
+    std::cout << "inside cuvscagra search" << std::endl;
     const raft::device_resources& raft_handle =
             resources_->getRaftHandleCurrentDevice();
     idx_t numQueries = queries.getSize(0);
@@ -232,9 +233,11 @@ void CuvsCagra::search(
     FAISS_ASSERT(cuvs_index);
     FAISS_ASSERT(numQueries > 0);
     FAISS_ASSERT(cols == dim_);
-
+    
+    std::cout << "checking store dataset" << std::endl;
     if (!store_dataset_) {
         if (getDeviceForAddress(storage_) >= 0) {
+        std::cout << "device dataset" << std::endl;
             auto dataset = raft::make_device_matrix_view<const float, int64_t>(
                     storage_, n_, dim_);
             cuvs_index->update_dataset(raft_handle, dataset);
@@ -244,6 +247,7 @@ void CuvsCagra::search(
             cuvs_index->update_dataset(raft_handle, dataset);
         }
     }
+    std::cout << "finished store dataset" << std::endl;
 
     auto queries_view = raft::make_device_matrix_view<const float, int64_t>(
             queries.data(), numQueries, cols);
@@ -252,6 +256,7 @@ void CuvsCagra::search(
     auto indices_view = raft::make_device_matrix_view<idx_t, int64_t>(
             outIndices.data(), numQueries, k_);
 
+    std::cout << "creating cuvs cagra search params" << std::endl;
     cuvs::neighbors::cagra::search_params search_pams;
     search_pams.max_queries = max_queries;
     search_pams.itopk_size = itopk_size;
@@ -268,9 +273,12 @@ void CuvsCagra::search(
     search_pams.hashmap_max_fill_rate = hashmap_max_fill_rate;
     search_pams.num_random_samplings = num_random_samplings;
     search_pams.rand_xor_mask = rand_xor_mask;
+    std::cout << "finished creating cuvs cagra search params" << std::endl;
 
     auto indices_copy = raft::make_device_matrix<uint32_t, int64_t>(
             raft_handle, numQueries, k_);
+
+    std::cout << "now doing cagra search" << std::endl;
 
     cuvs::neighbors::cagra::search(
             raft_handle,
@@ -279,11 +287,14 @@ void CuvsCagra::search(
             queries_view,
             indices_copy.view(),
             distances_view);
+    std::cout << "now finished cagra search" << std::endl;
      thrust::copy(
             raft::resource::get_thrust_policy(raft_handle),
             indices_copy.data_handle(),
             indices_copy.data_handle() + indices_copy.size(),
             indices_view.data_handle());
+    std::cout << "now finished copy" << std::endl;
+
 }
 
 void CuvsCagra::reset() {

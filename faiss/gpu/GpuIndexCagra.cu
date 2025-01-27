@@ -118,6 +118,7 @@ void GpuIndexCagra::searchImpl_(
         float* distances,
         idx_t* labels,
         const SearchParameters* search_params) const {
+    std::cout << "inside searchImpl_" << std::endl;
     FAISS_ASSERT(this->is_trained && index_);
     FAISS_ASSERT(n > 0);
 
@@ -125,14 +126,17 @@ void GpuIndexCagra::searchImpl_(
     Tensor<float, 2, true> outDistances(distances, {n, k});
     Tensor<idx_t, 2, true> outLabels(const_cast<idx_t*>(labels), {n, k});
 
+    std::cout << "created tensors" << std::endl;
     SearchParametersCagra* params;
+    std::cout << "setting searchParams" << std::endl;
     if (search_params) {
         params = dynamic_cast<SearchParametersCagra*>(
                 const_cast<SearchParameters*>(search_params));
+        std::cout << "success casting params" << std::endl;
     } else {
         params = new SearchParametersCagra{};
     }
-
+    std::cout << "now calling cuvscagra search" << std::endl;
     index_->search(
             queries,
             k,
@@ -151,6 +155,7 @@ void GpuIndexCagra::searchImpl_(
             params->hashmap_max_fill_rate,
             params->num_random_samplings,
             params->seed);
+    std::cout << "finish calling cuvscagra search" << std::endl;
 
     if (not search_params) {
         delete params;

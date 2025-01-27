@@ -129,6 +129,7 @@ void IndexRefine::search(
     std::cout << "now doing base index search" << std::endl;
     base_index->search(
             n, x, k_base, base_distances, base_labels, base_index_params);
+    std::cout << "completed base index search" << std::endl;
 
     for (int i = 0; i < n * k_base; i++)
         assert(base_labels[i] >= -1 && base_labels[i] < ntotal);

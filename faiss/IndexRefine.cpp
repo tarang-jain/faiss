@@ -272,6 +272,10 @@ void IndexRefineFlat::search(
 
     base_index->search(
             n, x, k_base, base_distances, base_labels, base_index_params);
+    
+    for(int i = 0; i < k_base; i++) {
+        std::cout << base_labels[i] << ' ' << base_distances[i] << std::endl;
+    }
 
     for (int i = 0; i < n * k_base; i++)
         assert(base_labels[i] >= -1 && base_labels[i] < ntotal);

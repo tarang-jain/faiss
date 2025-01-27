@@ -279,11 +279,11 @@ void CuvsCagra::search(
             queries_view,
             indices_copy.view(),
             distances_view);
-    raft::copy(
-            indices_view.data_handle(),
+     thrust::copy(
+            raft::resource::get_thrust_policy(raft_handle),
             indices_copy.data_handle(),
-            indices_copy.size(),
-            raft_handle.get_stream());
+            indices_copy.data_handle() + indices_copy.size(),
+            indices_view.data_handle());
 }
 
 void CuvsCagra::reset() {

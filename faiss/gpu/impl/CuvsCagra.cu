@@ -66,6 +66,7 @@ CuvsCagra::CuvsCagra(
     FAISS_THROW_IF_NOT_MSG(
             indicesOptions == faiss::gpu::INDICES_64_BIT,
             "only INDICES_64_BIT is supported for cuVS CAGRA index");
+    RAFT_LOG_INFO("store_dataset_ %d", store_dataset_);
 
     index_params_.intermediate_graph_degree = intermediate_graph_degree;
     index_params_.graph_degree = graph_degree;

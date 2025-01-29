@@ -187,6 +187,7 @@ void CuvsCagra::train(idx_t n, const float* x) {
         graph_build_params.max_iterations = nn_descent_niter_;
         index_params_.graph_build_params = graph_build_params;
     }
+    index_params_.attach_dataset_on_build = store_dataset_;
 
     if (getDeviceForAddress(x) >= 0) {
         auto dataset =

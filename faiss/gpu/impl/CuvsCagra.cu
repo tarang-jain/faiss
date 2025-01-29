@@ -234,6 +234,8 @@ void CuvsCagra::search(
     FAISS_ASSERT(numQueries > 0);
     FAISS_ASSERT(cols == dim_);
 
+    RAFT_LOG_INFO("inside search store_dataset_ %d", store_dataset_);
+
     if (!store_dataset_) {
         if (getDeviceForAddress(storage_) >= 0) {
             auto dataset = raft::make_device_matrix_view<const float, int64_t>(

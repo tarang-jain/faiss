@@ -235,6 +235,9 @@ void CuvsCagra::search(
     FAISS_ASSERT(cols == dim_);
     
     std::cout << "checking store dataset" << std::endl;
+
+    RAFT_LOG_INFO("inside search store_dataset_ %d", store_dataset_);
+
     if (!store_dataset_) {
         if (getDeviceForAddress(storage_) >= 0) {
         std::cout << "device dataset" << std::endl;

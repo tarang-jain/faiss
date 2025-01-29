@@ -39,6 +39,7 @@ GpuIndexCagra::GpuIndexCagra(
         : GpuIndex(provider->getResources(), dims, metric, 0.0f, config),
           cagraConfig_(config) {
     this->is_trained = false;
+    RAFT_LOG_INFO("cagraConfig_.store_dataset %d", cagraConfig_.store_dataset);
 }
 
 void GpuIndexCagra::train(idx_t n, const float* x) {

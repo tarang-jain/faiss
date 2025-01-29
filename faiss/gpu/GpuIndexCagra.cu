@@ -173,6 +173,7 @@ void GpuIndexCagra::copyFrom(const faiss::IndexHNSWCagra* index) {
     auto base_index = dynamic_cast<IndexFlat*>(index->storage);
     FAISS_ASSERT(base_index);
     auto distances = base_index->get_xb();
+    raft::print_host_vector("distances", distances, 100, std::cout);
 
     auto hnsw = index->hnsw;
     // copy level 0 to a dense knn graph matrix

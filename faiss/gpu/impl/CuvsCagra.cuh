@@ -119,7 +119,7 @@ class CuvsCagra {
 
     /// Controls the underlying cuVS index if it should store the dataset in
     /// device memory
-    bool store_dataset_;
+    bool store_dataset_ = true;
 
     /// Metric type of the index
     faiss::MetricType metric_;

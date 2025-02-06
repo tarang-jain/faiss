@@ -368,6 +368,7 @@ idx_t CuvsIVFPQ::addVectors(
     /// NB: The coarse quantizer is ignored here. The user is assumed to have
     /// called updateQuantizer() to update the cuVS index if the quantizer was
     /// modified externally
+    RAFT_LOG_INFO("inside addVectors");
 
     FAISS_ASSERT(cuvs_index);
 
@@ -384,7 +385,9 @@ idx_t CuvsIVFPQ::addVectors(
             raft::make_device_vector_view<const idx_t, idx_t>(
                     indices.data(), n_rows_valid),
             cuvs_index.get());
-
+    
+    raft_handle.sync_stream();
+    RAFT_LOG_INFO("inside addVectors; finished extend");
     return n_rows_valid;
 }
 

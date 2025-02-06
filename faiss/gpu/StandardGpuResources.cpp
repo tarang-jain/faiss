@@ -107,6 +107,7 @@ StandardGpuResourcesImpl::StandardGpuResourcesImpl()
 }
 
 StandardGpuResourcesImpl::~StandardGpuResourcesImpl() {
+    std::cout << "inside StandardGpuResources destructor" << std::endl;
     // The temporary memory allocator has allocated memory through us, so clean
     // that up before we finish fully de-initializing ourselves
     tempMemory_.clear();
@@ -175,6 +176,7 @@ StandardGpuResourcesImpl::~StandardGpuResourcesImpl() {
                 cudaGetErrorString(err));
 #endif
     }
+    std::cout << "finished StandardGpuResources destructor" << std::endl;
 }
 
 size_t StandardGpuResourcesImpl::getDefaultTempMemForGPU(

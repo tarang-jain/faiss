@@ -138,7 +138,7 @@ StandardGpuResourcesImpl::~StandardGpuResourcesImpl() {
         DeviceScope scope(entry.first);
 
         // We created these streams, so are responsible for destroying them
-        CUDA_VERIFY(cudaStreamDestroy(entry.second));
+        // CUDA_VERIFY(cudaStreamDestroy(entry.second));
     }
 
     for (auto& entry : alternateStreams_) {

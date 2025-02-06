@@ -118,7 +118,10 @@ class CuvsCagra {
     const int dim_;
 
     /// Controls the underlying cuVS index if it should store the dataset in
-    /// device memory
+    /// device memory. Default set to true for enabling search capabilities on
+    /// the index.
+    /// NB: This is also required to be set to true for deserializing
+    /// an IndexHNSWCagra object.
     bool store_dataset_ = true;
 
     /// Metric type of the index

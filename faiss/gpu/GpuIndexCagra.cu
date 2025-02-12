@@ -82,6 +82,7 @@ void GpuIndexCagra::train(idx_t n, const float* x) {
         ivf_pq_search_params->preferred_shmem_carveout =
                 cagraConfig_.ivf_pq_search_params->preferred_shmem_carveout;
     }
+    RAFT_LOG_INFO("store_dataset %d", cagraConfig_.store_dataset);
     index_ = std::make_shared<CuvsCagra>(
             this->resources_.get(),
             this->d,

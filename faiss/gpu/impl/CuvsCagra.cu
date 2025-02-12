@@ -188,6 +188,7 @@ void CuvsCagra::train(idx_t n, const float* x) {
         index_params_.graph_build_params = graph_build_params;
     }
     index_params_.attach_dataset_on_build = store_dataset_;
+    std::cout << "index_params_.attach_dataset_on_build" << index_params_.attach_dataset_on_build << std::endl;
 
     if (getDeviceForAddress(x) >= 0) {
         auto dataset =

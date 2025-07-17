@@ -22,15 +22,18 @@
  */
 
 #include <faiss/IndexBinaryHNSW.h>
+#include <faiss/IndexIDMap.h>
 #include <faiss/gpu/GpuIndexBinaryCagra.h>
 #include <faiss/gpu/GpuResources.h>
 #include <faiss/gpu/StandardGpuResources.h>
 #include <faiss/gpu/test/TestUtils.h>
 #include <faiss/utils/distances.h>
+#include <algorithm>
 #include <cstddef>
 #include <faiss/gpu/utils/CopyUtils.cuh>
 #include <faiss/gpu/utils/DeviceTensor.cuh>
 #include <optional>
+#include <unordered_set>
 #include <vector>
 
 #include <raft/core/resource/cuda_stream.hpp>
@@ -399,6 +402,53 @@ void copyFromTest(double expected_recall) {
 
 TEST(TestGpuIndexBinaryCagra, CopyFrom) {
     copyFromTest(0.98);
+}
+
+TEST(TestGpuIndexBinaryCagra, IndexBinaryIDMapBasic) {
+    Options opt;
+
+    auto trainVecs = faiss::gpu::randBinaryVecs(opt.numTrain, opt.dim);
+    auto queryVecs = faiss::gpu::randBinaryVecs(opt.numQuery, opt.dim);
+
+    std::vector<faiss::idx_t> ids(opt.numTrain);
+    for (int i = 0; i < opt.numTrain; i++) {
+        ids[i] = i * 100 + 5;
+    }
+
+    faiss::gpu::StandardGpuResources res;
+    res.noTempMemory();
+
+    faiss::gpu::GpuIndexCagraConfig config;
+    config.device = opt.device;
+    config.graph_degree = opt.graphDegree;
+    config.intermediate_graph_degree = opt.intermediateGraphDegree;
+
+    faiss::gpu::GpuIndexBinaryCagra gpuIndex(&res, opt.dim, config);
+
+    // Wrap with IndexBinaryIDMap
+    faiss::IndexBinaryIDMap idmap(&gpuIndex);
+
+    // Train and add with custom IDs
+    idmap.train(opt.numTrain, trainVecs.data());
+    idmap.add_with_ids(opt.numTrain, trainVecs.data(), ids.data());
+
+    // Search
+    std::vector<int> distances(opt.numQuery * opt.k);
+    std::vector<faiss::idx_t> indices(opt.numQuery * opt.k);
+    idmap.search(
+            opt.numQuery,
+            queryVecs.data(),
+            opt.k,
+            distances.data(),
+            indices.data());
+
+    for (int i = 0; i < opt.numQuery * opt.k; i++) {
+        if (indices[i] >= 0) {
+            auto it = std::find(ids.begin(), ids.end(), indices[i]);
+            ASSERT_TRUE(it != ids.end())
+                    << "Returned ID " << indices[i] << " not in custom ID set";
+        }
+    }
 }
 
 int main(int argc, char** argv) {
